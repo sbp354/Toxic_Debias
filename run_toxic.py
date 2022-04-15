@@ -76,7 +76,7 @@ except ImportError:
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 logger = logging.getLogger(__name__)
-
+'''
 ALL_MODELS = sum(
     (
         tuple(conf.pretrained_config_archive_map.keys())
@@ -92,7 +92,7 @@ ALL_MODELS = sum(
     ),
     (),
 )
-
+'''
 MODEL_CLASSES = {
     "bert": (BertConfig, BertForSequenceClassification, BertTokenizer),
     "xlnet": (XLNetConfig, XLNetForSequenceClassification, XLNetTokenizer),
@@ -440,7 +440,10 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
-    all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    if args.model_type in ["bert", "xlnet", "albert"]:
+      all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
+    else:
+      all_token_type_ids = torch.tensor([list(np.repeat(0, len(f.input_ids))) for f in features], dtype=torch.long)
     if output_mode == "classification":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
@@ -487,14 +490,14 @@ def main():
         default=None,
         type=str,
         required=True,
-        help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
+        #help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
     )
     parser.add_argument(
         "--bias_model",
         default=None,
         type=str,
         required=False,
-        help="Path to bias-only model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
+        #help="Path to bias-only model or shortcut name selected in the list: " + ", ".join(ALL_MODELS),
     )
     parser.add_argument(
         "--task_name",
