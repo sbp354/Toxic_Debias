@@ -199,12 +199,14 @@ class ToxicNewProcessor(DataProcessor):
         if train_dataset == 'founta':
             return self._create_examples(self.read_csv(os.path.join(data_dir, 'founta_train.csv')), "train")
         elif train_dataset == 'civil_comments':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, 'civil_train.csv')), "train")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, 'civil_train_finetune.csv')), "train")
 
     def get_dev_examples(self, data_dir, dev_dataset):
         """See base class."""
         if dev_dataset == 'founta':
             return self._create_examples(self.read_csv(os.path.join(data_dir, 'founta_dev.csv')), "dev")
+        elif dev_dataset == 'civil_comments':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, 'civil_val_finetune.csv')), "train")
 
     def get_examples(self, data_dir):
         """See base class."""
