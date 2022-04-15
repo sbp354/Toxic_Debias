@@ -396,11 +396,12 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
         args.data_dir,
-        "cached_{}_{}_{}_{}".format(
+        "cached_{}_{}_{}_{}_{}".format(
             "dev" if evaluate else "train",
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
             str(task),
+            args.train_dataset,
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
@@ -417,7 +418,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             examples = processor.get_examples(args.eval_data_dir)
         else:
             examples = (
-                processor.get_dev_examples(args.data_dir, args.dev_data_file) if evaluate else processor.get_train_examples(args.data_dir, args.train_data_file)
+                processor.get_dev_examples(args.data_dir, args.train_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
             )
 
         features = convert_examples_to_features(
@@ -513,11 +514,30 @@ def main():
         required=True,
         help="The output directory where the model predictions and checkpoints will be written.",
     )
+    parser.add_argument(
+        "--train_dataset",
+        default=None,
+        type=str,
+        required=True,
+        help="Which finetuning training dataset to use",
+    )
+    parser.add_argument(
+        "--dev_dataset",
+        default=None,
+        type=str,
+        required=True,
+        help="Which dev dataset to use",
+    )
+    
+    
 
     # Other parameters
     parser.add_argument(
-        "--config_name", default="", type=str, help="Pretrained config name or path if not the same as model_name",
+        "--config_name", default="", 
+        type=str, 
+        help="Pretrained config name or path if not the same as model_name",
     )
+
     parser.add_argument(
         "--tokenizer_name",
         default="",

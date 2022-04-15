@@ -194,13 +194,17 @@ class ToxicNewProcessor(DataProcessor):
         with open(input_file, "r", encoding="utf-8-sig") as f:
             return list(f)
 
-    def get_train_examples(self, data_dir, train_data_file):
+    def get_train_examples(self, data_dir, train_dataset):
         """See base class."""
-        return self._create_examples(self.read_csv(os.path.join(data_dir, train_data_file)), "train")
+        if train_dataset == 'founta':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, 'founta_train.csv')), "train")
+        elif train_dataset == 'civil_comments':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, 'civil_train.csv')), "train")
 
-    def get_dev_examples(self, data_dir, dev_data_file):
+    def get_dev_examples(self, data_dir, dev_dataset):
         """See base class."""
-        return self._create_examples(self.read_csv(os.path.join(data_dir, dev_data_file)), "dev")
+        if dev_dataset == 'founta':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, 'founta_dev.csv')), "dev")
 
     def get_examples(self, data_dir):
         """See base class."""
