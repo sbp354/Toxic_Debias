@@ -196,11 +196,11 @@ class ToxicNewProcessor(DataProcessor):
 
     def get_train_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(self.read_csv(os.path.join(data_dir,'ND_founta_trn_dial_pAPI.csv')), "train")
+        return self._create_examples(self.read_csv(os.path.join(data_dir,'founta_train.csv')), "train")
 
     def get_dev_examples(self, data_dir):
         """See base class."""
-        return self._create_examples(self.read_csv(os.path.join(data_dir, "ND_founta_dev_dial_pAPI.csv")), "dev")
+        return self._create_examples(self.read_csv(os.path.join(data_dir, "founta_dev.csv")), "dev")
 
     def get_examples(self, data_dir):
         """See base class."""
