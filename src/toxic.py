@@ -86,6 +86,7 @@ def glue_convert_examples_to_features(
     label_map = {label: i for i, label in enumerate(label_list)}
 
     features = []
+    print("ENUMERATING EXAMPLES")
     for (ex_index, example) in enumerate(examples):
         len_examples = 0
         if is_tf_dataset:
@@ -122,6 +123,8 @@ def glue_convert_examples_to_features(
         assert len(token_type_ids) == max_length, "Error with input length {} vs {}".format(
             len(token_type_ids), max_length
         )
+        print("OUTPUT MODE", output_mode)
+        print(example.label)
 
         if output_mode == "classification":
             label = label_map[example.label]
@@ -219,7 +222,7 @@ class ToxicNewProcessor(DataProcessor):
     def _create_examples(self, df, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
-        for (i, line) in enumerate(zip(df.tweet, df.ND_label)):
+        for (i, line) in enumerate(zip(df.columns[0], df.columns[1])):
             guid = "%s-%s" % (set_type, i)
             text_a = line[0]
             label = str(line[1])
