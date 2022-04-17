@@ -200,16 +200,24 @@ class ToxicNewProcessor(DataProcessor):
     def get_train_examples(self, data_dir, train_dataset):
         """See base class."""
         if train_dataset == 'founta':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, 'founta_train.csv')), "train")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset, 'founta_train_no_header.csv')), "train")
         elif train_dataset == 'civil_comments':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, 'civil_train_finetune.csv')), "train")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset,'civil_train_finetune.csv')), "train")
+        elif train_dataset == 'civil_comments_0.5':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset, 'civil_train_0.5_finetune.csv')), "train")
 
     def get_dev_examples(self, data_dir, dev_dataset):
         """See base class."""
         if dev_dataset == 'founta':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, 'founta_dev.csv')), "dev")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'founta_dev_no_header.csv')), "dev")
         elif dev_dataset == 'civil_comments':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, 'civil_val_finetune.csv')), "train")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_val_finetune.csv')), "dev")
+        elif dev_dataset == 'civil_comments_0.5':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_dev_0.5_finetune.csv')), "dev")
+        elif dev_dataset == 'SBIC':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'sbic_train_finetune.csv')), "train")
+
+
 
     def get_examples(self, data_dir):
         """See base class."""
@@ -222,7 +230,7 @@ class ToxicNewProcessor(DataProcessor):
     def _create_examples(self, df, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
-        for (i, line) in enumerate(zip(df.columns[0], df.columns[1])):
+        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]])):
             guid = "%s-%s" % (set_type, i)
             text_a = line[0]
             label = str(line[1])
