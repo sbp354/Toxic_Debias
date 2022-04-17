@@ -200,7 +200,7 @@ class ToxicNewProcessor(DataProcessor):
     def get_train_examples(self, data_dir, train_dataset):
         """See base class."""
         if train_dataset == 'founta':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset, 'founta_train_no_header.csv')), "train")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset, 'founta_train_finetune.csv')), "train")
         elif train_dataset == 'civil_comments':
             return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset,'civil_train_finetune.csv')), "train")
         elif train_dataset == 'civil_comments_0.5':
@@ -209,7 +209,7 @@ class ToxicNewProcessor(DataProcessor):
     def get_dev_examples(self, data_dir, dev_dataset):
         """See base class."""
         if dev_dataset == 'founta':
-            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'founta_dev_no_header.csv')), "dev")
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'founta_dev_finetune.csv')), "dev")
         elif dev_dataset == 'civil_comments':
             return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_val_finetune.csv')), "dev")
         elif dev_dataset == 'civil_comments_0.5':
