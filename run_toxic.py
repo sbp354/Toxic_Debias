@@ -34,6 +34,7 @@ import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
+import pandas as pd
 
 from transformers import (
     WEIGHTS_NAME,
@@ -358,16 +359,25 @@ def evaluate(args, model, tokenizer, prefix=""):
 
         eval_loss = eval_loss / nb_eval_steps
         if args.output_mode == "classification":
+            scores = np.max(preds, axis =1)
             preds = np.argmax(preds, axis=1)
         elif args.output_mode == "regression":
             preds = np.squeeze(preds)
         result = compute_metrics("sst-2", preds, out_label_ids)
         results.update(result)
 
+        preds = preds.reshape(-1,1)
+        scores = scores.reshape(-1,1)
+        out_label_ids = out_label_ids.reshape(-1,1)
+
+        #write out predictions and output_label_ids
+        results_matrix = np.concatenate((preds, scores, out_label_ids), axis = 1)
+        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'scores', 'true_labels'])
+        results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
         else:
-            output_eval_file = os.path.join(eval_output_dir, prefix, "eval_results.txt")
+            output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.train_dataset}_challenge_{args.dev_dataset}_eval_results.txt")
 
         with open(output_eval_file, "w") as writer:
             logger.info("***** Eval results {} *****".format(prefix))
@@ -395,7 +405,8 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
-        args.data_dir,
+        args.data_dir, 
+        args.train_dataset,
         "cached_{}_{}_{}_{}_{}".format(
             "dev" if evaluate else "train",
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
@@ -408,7 +419,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
     else:
-        logger.info("Creating features from dataset file at %s", args.data_dir)
+        logger.info("Creating features from dataset file at %s", os.path.join(args.data_dir, args.train_dataset))
         label_list = processor.get_labels()
         if task in ["mnli", "mnli-mm"] and args.model_type in ["roberta", "xlmroberta"]:
             # HACK(label indices are swapped in RoBERTa pretrained model)
@@ -418,18 +429,15 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             examples = processor.get_examples(args.eval_data_dir)
         else:
             examples = (
-                processor.get_dev_examples(args.data_dir, args.train_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
+                processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
             )
-
+        
         features = convert_examples_to_features(
             examples,
             tokenizer,
             label_list=label_list,
             max_length=args.max_seq_length,
-            output_mode=output_mode,
-            pad_on_left=bool(args.model_type in ["xlnet"]),  # pad on the left for xlnet
-            pad_token=tokenizer.convert_tokens_to_ids([tokenizer.pad_token])[0],
-            pad_token_segment_id=4 if args.model_type in ["xlnet"] else 0,
+            output_mode=output_mode
         )
         if args.local_rank in [-1, 0]:
             logger.info("Saving features into cached file %s", cached_features_file)
@@ -557,7 +565,7 @@ def main():
         help="The maximum total input sequence length after tokenization. Sequences longer "
         "than this will be truncated, sequences shorter will be padded.",
     )
-    parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
+    parser.add_argument("--do_train", action=argparse.BooleanOptionalAction, help="Whether to run training.")
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--ensemble_bias", action="store_true", help="Whether to use bias-only model to inform training")
     parser.add_argument(
@@ -626,6 +634,14 @@ def main():
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
     args = parser.parse_args()
+
+    if args.do_train:
+        print("RUNNING TRAINING")
+    else:
+        print("RUNNING WITHOUT TRAINING")
+
+    args.output_dir = os.path.join(args.output_dir, args.model_name_or_path)
+    print(f"Setting output_dir = {args.output_dir}")
 
     if (
         os.path.exists(args.output_dir)
