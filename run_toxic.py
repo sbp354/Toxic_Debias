@@ -33,6 +33,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
+import torch.nn.functional as F
 from tqdm import tqdm, trange
 import pandas as pd
 
@@ -347,32 +348,38 @@ def evaluate(args, model, tokenizer, prefix=""):
                     )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
                 outputs = model(**inputs)
                 tmp_eval_loss, logits = outputs[:2]
+                probas = F.softmax(logits, dim=-1)
 
                 eval_loss += tmp_eval_loss.mean().item()
             nb_eval_steps += 1
             if preds is None:
                 preds = logits.detach().cpu().numpy()
+                scores = probas.detach().cpu().numpy()
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
+                scores = np.append(scores, probas.detach().cpu().numpy(), axis =0)
 
         eval_loss = eval_loss / nb_eval_steps
         if args.output_mode == "classification":
-            scores = np.max(preds, axis =1)
-            preds = np.argmax(preds, axis=1)
+            max_logits = np.max(preds, axis =1)
+            scores = np.max(scores, axis =1)
+            pred_labels = np.argmax(preds, axis=1)
         elif args.output_mode == "regression":
-            preds = np.squeeze(preds)
-        result = compute_metrics("sst-2", preds, out_label_ids)
+            pred_labels = np.squeeze(preds)
+        result = compute_metrics("sst-2", pred_labels, out_label_ids)
         results.update(result)
 
-        preds = preds.reshape(-1,1)
+        max_logits = max_logits.reshape(-1,1)
         scores = scores.reshape(-1,1)
+        pred_labels = pred_labels.reshape(-1,1)
         out_label_ids = out_label_ids.reshape(-1,1)
 
         #write out predictions and output_label_ids
-        results_matrix = np.concatenate((preds, scores, out_label_ids), axis = 1)
-        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'scores', 'true_labels'])
+        results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+        print(results_df.head())
         results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
@@ -406,13 +413,13 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     # Load data features from cache or dataset file
     cached_features_file = os.path.join(
         args.data_dir, 
-        args.train_dataset,
+        args.dev_dataset if evaluate else args.train_dataset,
         "cached_{}_{}_{}_{}_{}".format(
             "dev" if evaluate else "train",
             list(filter(None, args.model_name_or_path.split("/"))).pop(),
             str(args.max_seq_length),
             str(task),
-            args.train_dataset,
+            args.dev_dataset if evaluate else args.train_dataset,
         ),
     )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
@@ -765,8 +772,14 @@ def main():
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-        checkpoints = [args.output_dir]
+        try:
+            tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
+            checkpoints = [args.output_dir]
+            print(f"Loading tokenizer from {args.output_dir}")
+        except:
+            tokenizer = tokenizer_class.from_pretrained(os.path.join(args.output_dir, 'checkpoint-101'), do_lower_case=args.do_lower_case)
+            checkpoints = [os.path.join(args.output_dir, 'checkpoint-101')]
+            print(f"Loading tokenizer from {os.path.join(args.output_dir, 'checkpoint-101')}")
         if args.eval_all_checkpoints:
             checkpoints = list(
                 os.path.dirname(c) for c in sorted(glob.glob(args.output_dir + "/**/" + WEIGHTS_NAME, recursive=True))
