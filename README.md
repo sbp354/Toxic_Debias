@@ -38,6 +38,38 @@ in
 
 `requirements.txt`
 
+### NLU Finetuning Instructions
+
+We have set up the repo to allow for finetuning on two datasets and testing/ eval on 5 datas (4 for each of the finetuning datasets). Combinations of finetune/ test datasets are in the table below:
+
+| Finetune Dataset     | Challenge/Eval Datasets                                         |
+|----------------------|-----------------------------------------------------------------|
+| Civil comments train | Civil comments test                                           |
+|                      | SBIC                                                            |
+|                      | BiBiFi                                                |
+|                      | Covert comments                                             |
+|                      | TwitterAAE                                                  |
+| Founta train         | Founta test 
+|                      | SBIC                                                            |
+|                      | BiBiFi                                                |
+|                      | Covert comments                                             |
+|                      | TwitterAAE                                                  |
+
+We run finetuning and eval by updating different shell scripts found in the shell_scripts/ folder of the parent directory. The relevant arguments to update are below:
+
+* TOXIC_DIR: Parent directory where different datasets are read in and where tokenized forms of datasets are cached (assumption is that there are dataset-specific subdirectories)
+* TRAIN_DATASET : name of the finetuning dataset to use. Options allowed in current iteration of the repository are:
+  *  founta
+  *  civil_comments_0.5
+* DEV_DATASET : name of the challenge dataset on which the finetuned model is to be scores. Options allowed in current iteration of the repository are:
+  *  founta (only use when running founta finetuned model)
+  *  civil_comments_0.5 (only use whne running civil comments finetuned model
+  *  SBIC
+  *  bibifi
+  *  covert_comments 
+* MODEL_DIR : directory where model checkpoints/results will get output 
+* do_train / no-do_train: when no_train finetuning will run; when no-do_train only eval will run
+
 ### Data
 
 * You can find the index of the training data with different data selection
