@@ -116,6 +116,11 @@ def set_seed(args):
         torch.cuda.manual_seed_all(args.seed)
 
 
+def load_teacher_probs(args, processor):
+    if args.teacher_data_dir != None:
+        teacher_examples = processor.get_examples(args.teacher_data_dir)
+
+
 def train(args, train_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
@@ -124,6 +129,10 @@ def train(args, train_dataset, model, tokenizer):
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+
+    # Adding Debiasing teacher probs loading
+    if args.mode != "none":
+        label_ids, teacher_probs = load_teacher_probs(args)
 
     if args.max_steps > 0:
         t_total = args.max_steps
@@ -454,9 +463,14 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.local_rank == 0 and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
+    if args.mode != 'none':
+        if args.teacher_data_dir != None:
+            teacher_probs = pd.read_csv(args.teacher_data_dir)
+
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
+    all_example_ids = torch.tensor(range(len(f.input_ids)), dtype=torch.long)
     if args.model_type in ["bert", "xlnet", "albert"]:
       all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
     else:
@@ -468,10 +482,13 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.ensemble_bias and not evaluate:
         all_bias = load_bias(args)
         all_bias = torch.tensor([b for b in all_bias], dtype=torch.float)
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_example_ids)
         return dataset
-
-    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)
+    if args.mode != 'none':
+        all_teacher_probs = torch.tensor([teacher_probs, 1 - teacher_probs], dtype=torch.float)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
+    
+    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids)
     return dataset
 
 
@@ -493,6 +510,14 @@ def main():
         type=str,
         required=False,
         help="The input data dir. Should contain the .tsv files (or other data files) for the task.",
+    )
+
+    parser.add_argument(
+        "--teacher_data_dir",
+        default=None,
+        type=str,
+        required=False,
+        help="The teacher probs data dir. Should contain the .tsv files (or other data files) for the task.",
     )
 
     parser.add_argument(
