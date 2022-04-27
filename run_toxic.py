@@ -70,6 +70,7 @@ from src.toxic import glue_processors as processors
 from src.modeling_roberta_debias import RobertaForDebiasSequenceClassification 
 from src.modeling_roberta_debias import RobertaForTransSequenceClassification 
 from src import py_utils
+from src.clf_loss_functions import *
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -640,6 +641,22 @@ def main():
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
     parser.add_argument("--server_ip", type=str, default="", help="For distant debugging.")
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
+    
+    # Debiasing arguments
+    parser.add_argument("--do_shallow",
+                        action='store_true',
+                        help="Train a shallow model on 2K samples for 5 epochs that evaluates on the remaining training data.")
+    parser.add_argument("--mode", 
+                        choices=["none", "distill", "smoothed_distill", "smoothed_distill_annealed",
+                                "label_smoothing", "theta_smoothed_distill", "reweight_baseline",
+                                "smoothed_reweight_baseline", "permute_smoothed_distill",
+                                "bias_product_baseline", "learned_mixin_baseline",
+                                "reweight_by_teacher", "reweight_by_teacher_annealed",
+                                "bias_product_by_teacher", "bias_product_by_teacher_annealed",
+                                "focal_loss"],
+                        help = "Custom loss functions",
+                        default="none")
+    
     args = parser.parse_args()
 
     if args.do_train:
