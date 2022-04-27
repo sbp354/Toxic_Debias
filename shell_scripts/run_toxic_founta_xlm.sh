@@ -9,8 +9,8 @@ export RAN=$2
 export MODEL_DIR=/scratch/pg2255/nlu/run_results/models/founta
 
 python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
-  --model_type roberta \
-  --model_name_or_path roberta-large \
+  --model_type xlm \
+  --model_name_or_path xlm-mlm-en-2048 \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \
