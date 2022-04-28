@@ -16,28 +16,38 @@ def set_seed(args):
     random.seed(args.seed)
 
 def save_csvs(args,df_shallow, df_remainder):
-    df_shallow.to_csv(path= os.path.join(args.data_dir, args.train_dataset + '_train_shallow_' + args.mode + '.csv'),
-    index = True,
-    index_label = 'ind')
+    if args.mode == 'random':
+        fm = args.mode +"_"+ str(args.sample_percent) + f"_seed{args.seed}" 
+    else:
+        fm = args.mode+ f"_seed{args.seed}"
+    output_path = os.path.join(args.output_dir, args.train_dataset + '_train_shallow_' + fm + '.csv')
+    print(f"Outputting {len(df_shallow)} samples to {output_path}")
+    df_shallow.to_csv(output_path,
+                            index = True,
+                            index_label = 'ind')
+                            
     
-    df_remainder.to_csv(path= os.path.join(args.data_dir, args.train_dataset + '_train_shallow_remainder_' + args.mode + '.csv'),
-    index = True,
-    index_label = 'ind')
+    df_remainder.to_csv(os.path.join(args.output_dir, args.train_dataset + '_train_shallow_remainder_' + fm + '.csv'),
+                        index = True,
+                        index_label = 'ind')
 
 def random_perc(args):
     set_seed(args)
-    if args.mode == "random_005":
-        perc = .005
+    if args.train_dataset == 'founta':
+        train_file = 'founta_train_finetune.csv'
+    elif args.train_dataset == 'civil_comments_0.5':
+        train_file = 'civil_train_0.5_finetune.csv'
     df = pd.read_csv(
-         os.path.join(args.data_dir, args.train_dataset + '_train.csv'),
+         os.path.join(args.data_dir, train_file),
          header=0) #, 
          #skiprows=lambda i: i>0 and random.random() > perc)
 
     # We need indices of the original rows for teacher predictions
     df['ind'] = [x for x in range(0, len(df.values))]
 
-    df_shallow = df.sample(frac = perc)
-    df_remainder = df.drop(df_shallow.index)
+    if args.mode == "random":
+        df_shallow = df.sample(frac = args.sample_percent)
+        df_remainder = df.drop(df_shallow.index)
 
     save_csvs(args,df_shallow,df_remainder)
 
@@ -69,9 +79,14 @@ def main():
     )
 
     parser.add_argument("--mode", 
-                        choices=["random_005"],
+                        choices=["random", "balanced"],
                         help = "Different subsampling methods",
-                        default="random_005")
+                        default="random")
+    
+    parser.add_argument("--sample_percent", 
+                        type = float,
+                        help = "Percentage to sample",
+                        default=None)
 
     parser.add_argument(
         "--output_dir",
@@ -87,22 +102,22 @@ def main():
     
     args = parser.parse_args()
 
+    '''
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
-        and args.do_train
-        and not args.overwrite_output_dir
     ):
         raise ValueError(
             "Output directory ({}) already exists and is not empty. Use --overwrite_output_dir to overcome.".format(
                 args.output_dir
             )
         )
+    '''
 
     # Set seed
     set_seed(args)
 
-    if args.mode == "random_005":
+    if args.mode == "random":
         random_perc(args)
 
 
