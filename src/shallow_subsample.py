@@ -16,11 +16,11 @@ def set_seed(args):
     random.seed(args.seed)
 
 def save_csvs(args,df_shallow, df_remainder):
-    df_shallow.to_csv(path= os.path.join(args.data_dir, args.train_dataset + '_train_shallow_' + args.mode + '.csv'),
+    df_shallow.to_csv(path_or_buf=os.path.join(args.data_dir, args.train_dataset + '_train_shallow_' + args.mode + '.csv'),
     index = True,
     index_label = 'ind')
     
-    df_remainder.to_csv(path= os.path.join(args.data_dir, args.train_dataset + '_train_shallow_remainder_' + args.mode + '.csv'),
+    df_remainder.to_csv(path_or_buf=os.path.join(args.data_dir, args.train_dataset + '_train_shallow_remainder_' + args.mode + '.csv'),
     index = True,
     index_label = 'ind')
 
@@ -90,7 +90,6 @@ def main():
     if (
         os.path.exists(args.output_dir)
         and os.listdir(args.output_dir)
-        and args.do_train
         and not args.overwrite_output_dir
     ):
         raise ValueError(

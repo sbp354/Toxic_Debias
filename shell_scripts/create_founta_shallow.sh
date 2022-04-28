@@ -1,6 +1,6 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
-export TRAIN_DATASET=founta_train.csv
+export TRAIN_DATASET=founta
 export MODE=random_005
 
 python /scratch/pg2255/nlu/Toxic_Debias/src/shallow_subsample.py \
