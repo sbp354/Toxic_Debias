@@ -70,7 +70,7 @@ from src.toxic import glue_processors as processors
 from src.modeling_roberta_debias import RobertaForDebiasSequenceClassification 
 from src.modeling_roberta_debias import RobertaForTransSequenceClassification 
 from src import py_utils
-import clf_loss_functions
+from src import clf_loss_functions
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -237,7 +237,15 @@ def train(args, train_dataset, model, tokenizer):
                 inputs["bias"]= batch[4]
             
             outputs = model(**inputs)
-            loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
+
+            """ New code below for custom loss functions
+            loss_fn(hidden,logits,bias, teacher_probs,labels) 
+            hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
+            but for now just set this to null values """
+            loss_fn = args.mode
+            loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
+            # The line below was the old code
+            #loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -470,7 +478,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
-    all_example_ids = torch.tensor(range(len(f.input_ids)), dtype=torch.long)
+    #all_example_ids = torch.tensor(range(len(f.input_ids)), dtype=torch.long)
     if args.model_type in ["bert", "xlnet", "albert"]:
       all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
     else:
@@ -482,13 +490,13 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.ensemble_bias and not evaluate:
         all_bias = load_bias(args)
         all_bias = torch.tensor([b for b in all_bias], dtype=torch.float)
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_example_ids)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)#, all_example_ids)
         return dataset
-    if args.mode != 'none':
-        all_teacher_probs = torch.tensor([teacher_probs, 1 - teacher_probs], dtype=torch.float)
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
+    # if args.mode != 'none':
+    #     all_teacher_probs = torch.tensor([teacher_probs, 1 - teacher_probs], dtype=torch.float)
+    #     dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
     
-    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids)
+    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)#, all_example_ids)
     return dataset
 
 
