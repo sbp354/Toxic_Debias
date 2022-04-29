@@ -243,7 +243,10 @@ def train(args, train_dataset, model, tokenizer):
             hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
             but for now just set this to null values """
             loss_fn = args.mode
-            loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
+            if args.mode == None:
+                loss = loss_fn(None,outputs.logits,None, None,inputs['labels'])
+            else: 
+                loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
             # The line below was the old code
             #loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
 
