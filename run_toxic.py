@@ -244,7 +244,13 @@ def train(args, train_dataset, model, tokenizer):
             hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
             but for now just set this to null values """
             loss_fn = args.mode
-            labels_for_loss = [int(x) for x in inputs['labels']]
+            #print("The type of input for original labels in batch is ", type(batch[3]))
+            #print(batch[3])
+            #print("The type of input for logits is ", type(outputs.logits))
+            #print(outputs.logits)
+            #labels_for_loss = [int(x) for x in inputs['labels']]
+            #print(type(labels_for_loss))
+            #print(labels_for_loss)
             if args.mode == 'none':
                 loss = loss_fn(None,outputs.logits,None, None,labels_for_loss)
             else: 
