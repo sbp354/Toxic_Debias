@@ -238,13 +238,15 @@ def train(args, train_dataset, model, tokenizer):
             
             outputs = model(**inputs)
 
+            
             """ New code below for custom loss functions
             loss_fn(hidden,logits,bias, teacher_probs,labels) 
             hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
             but for now just set this to null values """
             loss_fn = args.mode
+            labels_for_loss = [int(x) for x in inputs['labels']]
             if args.mode == 'none':
-                loss = loss_fn(None,outputs.logits,None, None,inputs['labels'])
+                loss = loss_fn(None,outputs.logits,None, None,labels_for_loss)
             else: 
                 loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
             # The line below was the old code
@@ -832,8 +834,6 @@ def main():
     # Training
     if args.do_train:
         train_dataset = load_and_cache_examples(args, args.task_name, tokenizer, evaluate=False)
-        # New line for setting the dataset format to be torch
-        train_dataset.set_format(type="torch")
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
 
