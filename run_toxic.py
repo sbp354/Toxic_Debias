@@ -243,7 +243,7 @@ def train(args, train_dataset, model, tokenizer):
             hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
             but for now just set this to null values """
             loss_fn = args.mode
-            if args.mode == None:
+            if args.mode == 'none':
                 loss = loss_fn(None,outputs.logits,None, None,inputs['labels'])
             else: 
                 loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
