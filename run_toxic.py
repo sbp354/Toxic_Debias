@@ -243,7 +243,42 @@ def train(args, train_dataset, model, tokenizer):
             loss_fn(hidden,logits,bias, teacher_probs,labels) 
             hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
             but for now just set this to null values """
-            loss_fn = args.mode
+            # Custom Loss Functions
+            if args.mode == "none":
+                loss_fn = clf_loss_functions.Plain()
+            elif args.mode == "distill":
+                loss_fn = clf_loss_functions.DistillLoss()
+            elif args.mode == "smoothed_distill":
+                loss_fn = clf_loss_functions.SmoothedDistillLoss()
+            elif args.mode == "smoothed_distill_annealed":
+                loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed()
+            elif args.mode == "theta_smoothed_distill":
+                loss_fn = clf_loss_functions.ThetaSmoothedDistillLoss(args.theta)
+            elif args.mode == "label_smoothing":
+                loss_fn = clf_loss_functions.LabelSmoothing(3)
+            elif args.mode == "reweight_baseline":
+                loss_fn = clf_loss_functions.ReweightBaseline()
+            elif args.mode == "permute_smoothed_distill":
+                loss_fn = clf_loss_functions.PermuteSmoothedDistillLoss()
+            elif args.mode == "smoothed_reweight_baseline":
+                loss_fn = clf_loss_functions.SmoothedReweightLoss()
+            elif args.mode == "bias_product_baseline":
+                loss_fn = clf_loss_functions.BiasProductBaseline()
+            elif args.mode == "learned_mixin_baseline":
+                loss_fn = clf_loss_functions.LearnedMixinBaseline(args.penalty)
+            elif args.mode == "reweight_by_teacher":
+                loss_fn = clf_loss_functions.ReweightByTeacher()
+            elif args.mode == "reweight_by_teacher_annealed":
+                loss_fn = clf_loss_functions.ReweightByTeacherAnnealed()
+            elif args.mode == "bias_product_by_teacher":
+                loss_fn = clf_loss_functions.BiasProductByTeacher()
+            elif args.mode == "bias_product_by_teacher_annealed":
+                loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
+            elif args.mode == "focal_loss":
+                loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
+            else:
+                raise RuntimeError()
+
             #print("The type of input for original labels in batch is ", type(batch[3]))
             #print(batch[3])
             #print("The type of input for logits is ", type(outputs.logits))
@@ -252,7 +287,7 @@ def train(args, train_dataset, model, tokenizer):
             #print(type(labels_for_loss))
             #print(labels_for_loss)
             if args.mode == 'none':
-                loss = loss_fn(None,outputs.logits,None, None,labels_for_loss)
+                loss = loss_fn(None,outputs.logits,None, None,inputs['labels'])
             else: 
                 loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
             # The line below was the old code
@@ -707,42 +742,6 @@ def main():
         print("RUNNING TRAINING")
     else:
         print("RUNNING WITHOUT TRAINING")
-
-    # Custom Loss Functions
-    if args.mode == "none":
-        loss_fn = clf_loss_functions.Plain()
-    elif args.mode == "distill":
-        loss_fn = clf_loss_functions.DistillLoss()
-    elif args.mode == "smoothed_distill":
-        loss_fn = clf_loss_functions.SmoothedDistillLoss()
-    elif args.mode == "smoothed_distill_annealed":
-        loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed()
-    elif args.mode == "theta_smoothed_distill":
-        loss_fn = clf_loss_functions.ThetaSmoothedDistillLoss(args.theta)
-    elif args.mode == "label_smoothing":
-        loss_fn = clf_loss_functions.LabelSmoothing(3)
-    elif args.mode == "reweight_baseline":
-        loss_fn = clf_loss_functions.ReweightBaseline()
-    elif args.mode == "permute_smoothed_distill":
-        loss_fn = clf_loss_functions.PermuteSmoothedDistillLoss()
-    elif args.mode == "smoothed_reweight_baseline":
-        loss_fn = clf_loss_functions.SmoothedReweightLoss()
-    elif args.mode == "bias_product_baseline":
-        loss_fn = clf_loss_functions.BiasProductBaseline()
-    elif args.mode == "learned_mixin_baseline":
-        loss_fn = clf_loss_functions.LearnedMixinBaseline(args.penalty)
-    elif args.mode == "reweight_by_teacher":
-        loss_fn = clf_loss_functions.ReweightByTeacher()
-    elif args.mode == "reweight_by_teacher_annealed":
-        loss_fn = clf_loss_functions.ReweightByTeacherAnnealed()
-    elif args.mode == "bias_product_by_teacher":
-        loss_fn = clf_loss_functions.BiasProductByTeacher()
-    elif args.mode == "bias_product_by_teacher_annealed":
-        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
-    elif args.mode == "focal_loss":
-        loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
-    else:
-        raise RuntimeError()
 
     args.output_dir = os.path.join(args.output_dir, args.model_name_or_path)
     print(f"Setting output_dir = {args.output_dir}")
