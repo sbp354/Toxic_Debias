@@ -12,7 +12,7 @@ python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
   --model_type roberta \
   --model_name_or_path roberta-large \
   --task_name $TASK_NAME \
-  --no-do_train \
+  --do_train \
   --do_eval \
   --evaluate_during_training \
   --save_steps 1000 \

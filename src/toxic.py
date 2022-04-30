@@ -288,7 +288,7 @@ class ShallowNewProcessor(DataProcessor):
             text_a = line[0]
             label = str(line[1])
             ind = line[2]
-            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label, ind=ind))
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))#, ind=ind))
         return examples
 
 

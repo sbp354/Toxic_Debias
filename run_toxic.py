@@ -406,7 +406,10 @@ def evaluate(args, model, tokenizer, prefix=""):
             batch = tuple(t.to(args.device) for t in batch)
 
             with torch.no_grad():
-                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
+                if args.task_name == "shallow":
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
+                else: 
+                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
                 if args.model_type != "distilbert":
                     inputs["token_type_ids"] = (
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
@@ -443,14 +446,18 @@ def evaluate(args, model, tokenizer, prefix=""):
         out_label_ids = out_label_ids.reshape(-1,1)
 
         # This is so that for the shallow task we also have the index of the original set
-        if args.task_name == "shallow":
-            ind = ind.reshape(-1,1)
-            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels', 'ind'])
-            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids, ind), axis = 1)
-        else: 
-            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
-            #write out predictions and output_label_ids
-            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+        # if args.task_name == "shallow":
+        #     ind = ind.reshape(-1,1)
+        #     results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels', 'ind'])
+        #     results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids, ind), axis = 1)
+        # else: 
+        #     results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+        #     #write out predictions and output_label_ids
+        #     results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+        #write out predictions and output_label_ids
+        results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+
         print(results_df.head())
         if args.task_name == "shallow":
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
