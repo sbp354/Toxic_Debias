@@ -1,7 +1,8 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TRAIN_DATASET=founta
-export MODE=random_005
+export MODE=random
+export PERCENT=.005
 
 python /scratch/pg2255/nlu/Toxic_Debias/src/shallow_subsample.py \
   --overwrite_output_dir \
@@ -9,4 +10,5 @@ python /scratch/pg2255/nlu/Toxic_Debias/src/shallow_subsample.py \
   --train_dataset $TRAIN_DATASET \
   --output_dir $TOXIC_DIR
   --mode $MODE
+  --sample_percent $PERCENT
   
