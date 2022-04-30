@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import random
+import re
 
 import numpy as np
 import torch
@@ -435,20 +436,33 @@ def evaluate(args, model, tokenizer, prefix=""):
         result = compute_metrics("sst-2", pred_labels, out_label_ids)
         results.update(result)
 
+
         max_logits = max_logits.reshape(-1,1)
         scores = scores.reshape(-1,1)
         pred_labels = pred_labels.reshape(-1,1)
         out_label_ids = out_label_ids.reshape(-1,1)
 
-        #write out predictions and output_label_ids
-        results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
-        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+        # This is so that for the shallow task we also have the index of the original set
+        if args.task_name == "shallow":
+            ind = ind.reshape(-1,1)
+            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels', 'ind'])
+            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids, ind), axis = 1)
+        else: 
+            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+            #write out predictions and output_label_ids
+            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
         print(results_df.head())
-        results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
+        if args.task_name == "shallow":
+            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
+        else: 
+            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
         else:
-            output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.train_dataset}_challenge_{args.dev_dataset}_eval_results.txt")
+            if args.task_name == "shallow":
+                output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.dev_dataset}_eval_results.txt")
+            else: 
+                output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.train_dataset}_challenge_{args.dev_dataset}_eval_results.txt")
 
         with open(output_eval_file, "w") as writer:
             logger.info("***** Eval results {} *****".format(prefix))
@@ -517,9 +531,9 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.local_rank == 0 and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    if args.mode != 'none':
-        if args.teacher_data_dir != None:
-            teacher_probs = pd.read_csv(args.teacher_data_dir)
+    # if args.mode != 'none':
+    #     if args.teacher_data_dir != None:
+    #         teacher_probs = pd.read_csv(args.teacher_data_dir)
 
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
@@ -868,7 +882,7 @@ def main():
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        if args.model == 'roberta':
+        if args.model_type == 'roberta':
             tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
             checkpoints = [args.output_dir]
             print(f"Loading tokenizer from {args.output_dir}")
