@@ -598,8 +598,8 @@ glue_tasks_num_labels = {
 }
 
 glue_processors = {
-    "toxic":ToxicNewProcessor,  # This is our new one
-    "shallow":ShallowNewProcessor,  # This is our new one
+    "toxic":ToxicNewProcessor,  # Our code
+    "shallow":ShallowNewProcessor,  # Our code
     "toxic-davison":ToxicDavisonProcessor,
     "toxic_trans":ToxicTransProcessor
 }
@@ -619,4 +619,5 @@ glue_output_modes = {
     "qnli": "classification",
     "rte": "classification",
     "wnli": "classification",
+    "shallow": "classification"  # Our code
 }
