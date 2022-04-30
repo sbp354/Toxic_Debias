@@ -251,6 +251,7 @@ class ShallowNewProcessor(DataProcessor):
             tensor_dict["sentence"].numpy().decode("utf-8"),
             None,
             str(tensor_dict["label"].numpy()),
+            tensor_dict['ind'].numpy()
         )
 
     def read_csv(self, input_file, quotechar='"'):
@@ -271,7 +272,6 @@ class ShallowNewProcessor(DataProcessor):
         """See base class."""
         return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset)), "dev")
 
-
     def get_examples(self, data_dir):
         """See base class."""
         return self._create_examples(self.read_csv(data_dir,'"'), "dev")
@@ -283,11 +283,12 @@ class ShallowNewProcessor(DataProcessor):
     def _create_examples(self, df, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
-        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]])):
+        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
             guid = "%s-%s" % (set_type, i)
             text_a = line[0]
             label = str(line[1])
-            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+            ind = line[2]
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label, ind=ind))
         return examples
 
 
