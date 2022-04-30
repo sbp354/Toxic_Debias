@@ -283,6 +283,9 @@ class ShallowNewProcessor(DataProcessor):
     def _create_examples(self, df, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
+        print(df[df.columns[0]])
+        print(df[df.columns[1]])
+        print(df[df.columns[2]))
         for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
             guid = "%s-%s" % (set_type, i)
             text_a = line[0]
