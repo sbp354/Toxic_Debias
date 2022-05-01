@@ -283,18 +283,12 @@ class ShallowNewProcessor(DataProcessor):
     def _create_examples(self, df, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
-        #print(df[df.columns[0]])
-        #print(df[df.columns[1]])
-        #print(df[df.columns[2]])
         for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
-            guid = "%s-%s" % (set_type, i)
-            #print("The guid is ",guid)
-            #print("The index is ", line[0])
-            text_a = line[1]#line[0]
-            label = str(line[2])#str(line[1])
+            text_a = line[1]
+            label = str(line[2])
             ind = line[0]
             examples.append(InputExample(guid=ind, text_a=text_a, text_b=None, label=label))#, ind=ind))
-        return examples
+        return ind, examples
 
 
 class ToxicProcessor(DataProcessor):

@@ -532,9 +532,14 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         if args.eval_data_dir != None:
             examples = processor.get_examples(args.eval_data_dir)
         else:
-            examples = (
+            if args.task_name == "shallow":
+                ind, examples  = (
                 processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
-            )
+            ) 
+            else:
+                examples = (
+                    processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
+                )
         
         features = convert_examples_to_features(
             examples,
@@ -567,16 +572,25 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.float)
+
+
     if args.ensemble_bias and not evaluate:
         all_bias = load_bias(args)
         all_bias = torch.tensor([b for b in all_bias], dtype=torch.float)
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)#, all_example_ids)
+        if args.task_name == "shallow":
+            all_indices = torch.tensor(ind, dtype=torch.long)
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_indices)
+        else:
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)#, all_example_ids)
         return dataset
     # if args.mode != 'none':
     #     all_teacher_probs = torch.tensor([teacher_probs, 1 - teacher_probs], dtype=torch.float)
     #     dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
-    
-    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)#, all_example_ids)
+    if args.task_name == "shallow":
+        all_indices = torch.tensor(ind, dtype=torch.long)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_indices)
+    else: 
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)#, all_example_ids)
     return dataset
 
 
