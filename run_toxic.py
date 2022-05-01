@@ -401,16 +401,15 @@ def evaluate(args, model, tokenizer, prefix=""):
         nb_eval_steps = 0
         preds = None
         out_label_ids = None
+        indices = None
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             model.eval()
             batch = tuple(t.to(args.device) for t in batch)
-            print("This is a batch")
-            print(batch)
             with torch.no_grad():
-                if args.task_name == "shallow":
-                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
-                else: 
-                    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
+                #if args.task_name == "shallow":
+                #    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3], "ind": batch[-1]}
+               # else: 
+                inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
                 if args.model_type != "distilbert":
                     inputs["token_type_ids"] = (
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
@@ -425,11 +424,14 @@ def evaluate(args, model, tokenizer, prefix=""):
                 preds = logits.detach().cpu().numpy()
                 scores = probas.detach().cpu().numpy()
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
+                if args.task_name == "shallow":
+                   indices = batch[-1].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
                 scores = np.append(scores, probas.detach().cpu().numpy(), axis =0)
-
+                if args.task_name == "shallow":
+                    indices = np.append(indices, batch[-1].detach().cpu().numpy(), axis=0)    
         eval_loss = eval_loss / nb_eval_steps
         if args.output_mode == "classification":
             max_logits = np.max(preds, axis =1)
@@ -445,6 +447,7 @@ def evaluate(args, model, tokenizer, prefix=""):
         scores = scores.reshape(-1,1)
         pred_labels = pred_labels.reshape(-1,1)
         out_label_ids = out_label_ids.reshape(-1,1)
+        indices = indices.reshape(-1,1) 
 
         # This is so that for the shallow task we also have the index of the original set
         # if args.task_name == "shallow":
@@ -459,7 +462,8 @@ def evaluate(args, model, tokenizer, prefix=""):
         
         
         if args.task_name == "shallow":
-
+            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids,indices), axis = 1)
+            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels','indices'])
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
         else: 
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
