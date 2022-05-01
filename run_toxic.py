@@ -766,9 +766,6 @@ def main():
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
     
     # Debiasing arguments
-    parser.add_argument("--do_shallow",
-                        action='store_true',
-                        help="Train a shallow model on 2K samples for 5 epochs that evaluates on the remaining training data.")
     parser.add_argument("--mode", 
                         choices=["none", "distill", "smoothed_distill", "smoothed_distill_annealed",
                                 "label_smoothing", "theta_smoothed_distill", "reweight_baseline",
