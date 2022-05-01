@@ -325,13 +325,13 @@ class DebiasNewProcessor(DataProcessor):
 
     def get_merged_examples(self, data_dir, train_dataset, teacher_data_dir, teacher_dataset):
         return self._create_examples(self.merge_csvs(self.read_csv(os.path.join(data_dir, train_dataset)), \
-                self.read_csv(os.path.join(teacher_data_dir, teacher_dataset))))
+                self.read_csv(os.path.join(teacher_data_dir, teacher_dataset))), "train")
 
     def merge_csvs(self, train, teacher):
         teacher = teacher[['scores', 'indices']]
         #teacher['indices'] = teacher['indices'].astype('int32')
         train.rename({'ind': 'indices'}, axis='columns', inplace=True)
-        return pd.join(train,teacher, on='indices', how='left')
+        return train.join(teacher.set_index('indices'), on='indices', how='left')
 
     def get_examples(self, data_dir):
         """See base class."""
@@ -345,6 +345,7 @@ class DebiasNewProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         examples = []
         teacher_probs = []
+        print(df.columns)
         for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
             text_a = line[1]
             label = str(line[2])

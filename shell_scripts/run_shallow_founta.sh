@@ -1,10 +1,10 @@
 #!/bin/bash
-export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data/founta
+export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=Shallow
-export TRAIN_DATASET=founta_train_shallow_random_0.01.csv
-#founta_train_shallow_random_005.csv
-export DEV_DATASET=founta_train_shallow_remainder_random_0.01.csv
-#founta_train_shallow_remainder_random_005.csv
+#export TRAIN_DATASET=founta_train_shallow_random_0.01.csv
+export TRAIN_DATASET=founta_train_shallow_random_005.csv
+#export DEV_DATASET=founta_train_shallow_remainder_random_0.01.csv
+export DEV_DATASET=founta_train_shallow_remainder_random_005.csv
 
 export DATA=$1
 export RAN=$2
