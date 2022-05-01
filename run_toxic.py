@@ -454,11 +454,10 @@ def evaluate(args, model, tokenizer, prefix=""):
         #     results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
         #     #write out predictions and output_label_ids
         #     results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
-        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
         #write out predictions and output_label_ids
         results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
-
-        print(results_df.head())
+        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+        print(results_df.head(5))
         if args.task_name == "shallow":
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
         else: 
