@@ -8,7 +8,7 @@ export DEV_DATASET=founta_train_shallow_remainder_random_005.csv
 
 export DATA=$1
 export RAN=$2
-export MODEL_DIR=/scratch/pg2255/nlu/run_results/models/founta
+export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
 
 python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
   --model_type roberta \
