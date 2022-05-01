@@ -404,7 +404,8 @@ def evaluate(args, model, tokenizer, prefix=""):
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             model.eval()
             batch = tuple(t.to(args.device) for t in batch)
-
+            print("This is a batch")
+            print(batch)
             with torch.no_grad():
                 if args.task_name == "shallow":
                     inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
@@ -455,13 +456,16 @@ def evaluate(args, model, tokenizer, prefix=""):
         #     #write out predictions and output_label_ids
         #     results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
         #write out predictions and output_label_ids
-        results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
-        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
-        print(results_df.head(5))
+        
+        
         if args.task_name == "shallow":
+
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
         else: 
+            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
+        print(results_df.head(5))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
         else:
@@ -589,10 +593,6 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     
     if args.task_name == "shallow":
         all_indices = torch.tensor(indices, dtype=torch.long)
-        print(indices)
-        print("This is the len of ind", indices)
-        print(len(all_indices))
-        print(len(all_input_ids))
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_indices)
     else: 
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)#, all_example_ids)
