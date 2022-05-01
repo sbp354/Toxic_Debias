@@ -33,4 +33,4 @@ python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
   --learning_rate 1e-5 \
   --num_train_epochs 5.0 \
   --output_dir $MODEL_DIR \
-  --mode $
+  --mode $LOSS
