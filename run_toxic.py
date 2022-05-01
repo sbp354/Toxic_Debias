@@ -215,8 +215,46 @@ def train(args, train_dataset, model, tokenizer):
     train_iterator = trange(
         epochs_trained, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0],
     )
+
     set_seed(args)  # Added here for reproductibility
     model_acc = 0
+
+    # Custom Loss Functions
+    if args.mode == "none":
+        loss_fn = clf_loss_functions.Plain()
+    elif args.mode == "distill":
+        loss_fn = clf_loss_functions.DistillLoss()
+    elif args.mode == "smoothed_distill":
+        loss_fn = clf_loss_functions.SmoothedDistillLoss()
+    elif args.mode == "smoothed_distill_annealed":
+        loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed()
+    elif args.mode == "theta_smoothed_distill":
+        loss_fn = clf_loss_functions.ThetaSmoothedDistillLoss(args.theta)
+    elif args.mode == "label_smoothing":
+        loss_fn = clf_loss_functions.LabelSmoothing(3)
+    elif args.mode == "reweight_baseline":
+        loss_fn = clf_loss_functions.ReweightBaseline()
+    elif args.mode == "permute_smoothed_distill":
+        loss_fn = clf_loss_functions.PermuteSmoothedDistillLoss()
+    elif args.mode == "smoothed_reweight_baseline":
+        loss_fn = clf_loss_functions.SmoothedReweightLoss()
+    elif args.mode == "bias_product_baseline":
+        loss_fn = clf_loss_functions.BiasProductBaseline()
+    elif args.mode == "learned_mixin_baseline":
+        loss_fn = clf_loss_functions.LearnedMixinBaseline(args.penalty)
+    elif args.mode == "reweight_by_teacher":
+        loss_fn = clf_loss_functions.ReweightByTeacher()
+    elif args.mode == "reweight_by_teacher_annealed":
+        loss_fn = clf_loss_functions.ReweightByTeacherAnnealed()
+    elif args.mode == "bias_product_by_teacher":
+        loss_fn = clf_loss_functions.BiasProductByTeacher()
+    elif args.mode == "bias_product_by_teacher_annealed":
+        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
+    elif args.mode == "focal_loss":
+        loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
+    else:
+        raise RuntimeError()
+
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
@@ -239,56 +277,13 @@ def train(args, train_dataset, model, tokenizer):
             
             outputs = model(**inputs)
 
-            
             """ New code below for custom loss functions
             loss_fn(hidden,logits,bias, teacher_probs,labels) 
             hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
-            but for now just set this to null values """
-            # Custom Loss Functions
-            if args.mode == "none":
-                loss_fn = clf_loss_functions.Plain()
-            elif args.mode == "distill":
-                loss_fn = clf_loss_functions.DistillLoss()
-            elif args.mode == "smoothed_distill":
-                loss_fn = clf_loss_functions.SmoothedDistillLoss()
-            elif args.mode == "smoothed_distill_annealed":
-                loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed()
-            elif args.mode == "theta_smoothed_distill":
-                loss_fn = clf_loss_functions.ThetaSmoothedDistillLoss(args.theta)
-            elif args.mode == "label_smoothing":
-                loss_fn = clf_loss_functions.LabelSmoothing(3)
-            elif args.mode == "reweight_baseline":
-                loss_fn = clf_loss_functions.ReweightBaseline()
-            elif args.mode == "permute_smoothed_distill":
-                loss_fn = clf_loss_functions.PermuteSmoothedDistillLoss()
-            elif args.mode == "smoothed_reweight_baseline":
-                loss_fn = clf_loss_functions.SmoothedReweightLoss()
-            elif args.mode == "bias_product_baseline":
-                loss_fn = clf_loss_functions.BiasProductBaseline()
-            elif args.mode == "learned_mixin_baseline":
-                loss_fn = clf_loss_functions.LearnedMixinBaseline(args.penalty)
-            elif args.mode == "reweight_by_teacher":
-                loss_fn = clf_loss_functions.ReweightByTeacher()
-            elif args.mode == "reweight_by_teacher_annealed":
-                loss_fn = clf_loss_functions.ReweightByTeacherAnnealed()
-            elif args.mode == "bias_product_by_teacher":
-                loss_fn = clf_loss_functions.BiasProductByTeacher()
-            elif args.mode == "bias_product_by_teacher_annealed":
-                loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
-            elif args.mode == "focal_loss":
-                loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
-            else:
-                raise RuntimeError()
-
-            #print("The type of input for original labels in batch is ", type(batch[3]))
-            #print(batch[3])
-            #print("The type of input for logits is ", type(outputs.logits))
-            #print(outputs.logits)
-            #labels_for_loss = [int(x) for x in inputs['labels']]
-            #print(type(labels_for_loss))
-            #print(labels_for_loss)
+            but for now just set this to null values
+            """ 
             if args.mode == 'none':
-                loss = loss_fn(None,outputs.logits,None, None,inputs['labels'])
+                loss = loss_fn(None,outputs.logits,None, None,inputs['labels']) # 
             else: 
                 loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
             # The line below was the old code
@@ -406,9 +401,6 @@ def evaluate(args, model, tokenizer, prefix=""):
             model.eval()
             batch = tuple(t.to(args.device) for t in batch)
             with torch.no_grad():
-                #if args.task_name == "shallow":
-                #    inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3], "ind": batch[-1]}
-               # else: 
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
                 if args.model_type != "distilbert":
                     inputs["token_type_ids"] = (
@@ -442,26 +434,15 @@ def evaluate(args, model, tokenizer, prefix=""):
         result = compute_metrics("sst-2", pred_labels, out_label_ids)
         results.update(result)
 
-
         max_logits = max_logits.reshape(-1,1)
         scores = scores.reshape(-1,1)
         pred_labels = pred_labels.reshape(-1,1)
         out_label_ids = out_label_ids.reshape(-1,1)
         indices = indices.reshape(-1,1) 
-
-        # This is so that for the shallow task we also have the index of the original set
-        # if args.task_name == "shallow":
-        #     ind = ind.reshape(-1,1)
-        #     results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels', 'ind'])
-        #     results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids, ind), axis = 1)
-        # else: 
-        #     results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
-        #     #write out predictions and output_label_ids
-        #     results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+        
         #write out predictions and output_label_ids
-        
-        
         if args.task_name == "shallow":
+            # This is so that for the shallow task we also have the index of the original set
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids,indices), axis = 1)
             results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels','indices'])
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
