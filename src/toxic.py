@@ -681,5 +681,6 @@ glue_output_modes = {
     "qnli": "classification",
     "rte": "classification",
     "wnli": "classification",
-    "shallow": "classification"  # Our code
+    "shallow": "classification",  # Our code
+    "debias": "classification"  # Our code
 }
