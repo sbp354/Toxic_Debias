@@ -20,6 +20,7 @@ python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
   --save_steps 1000 \
   --logging_steps 1000 \
   --overwrite_output_dir \
+  --overwrite_cache \
   --data_dir $TOXIC_DIR \
   --train_dataset $TRAIN_DATASET \
   --dev_dataset $DEV_DATASET \
