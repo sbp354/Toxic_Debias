@@ -533,7 +533,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             examples = processor.get_examples(args.eval_data_dir)
         else:
             if args.task_name == "shallow":
-                ind, examples  = (
+                indices, examples  = (
                 processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
                 ) 
             else:
@@ -578,7 +578,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         all_bias = load_bias(args)
         all_bias = torch.tensor([b for b in all_bias], dtype=torch.float)
         if args.task_name == "shallow":
-            all_indices = torch.tensor(ind, dtype=torch.long)
+            all_indices = torch.tensor(indices, dtype=torch.long)
             dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_indices)
         else:
             dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)#, all_example_ids)
@@ -588,9 +588,9 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     #     dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
     
     if args.task_name == "shallow":
-        all_indices = torch.tensor(ind, dtype=torch.long)
-        print(ind)
-        print("This is the len of ind", ind)
+        all_indices = torch.tensor(indices, dtype=torch.long)
+        print(indices)
+        print("This is the len of ind", indices)
         print(len(all_indices))
         print(len(all_input_ids))
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_indices)
