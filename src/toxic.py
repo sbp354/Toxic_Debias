@@ -287,11 +287,71 @@ class ShallowNewProcessor(DataProcessor):
         for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
             text_a = line[1]
             label = str(line[2])
-            ind = line[0]
+            ind = line[0]  
             indices.append(ind)
             examples.append(InputExample(guid=ind, text_a=text_a, text_b=None, label=label))#, ind=ind))
         return indices, examples
 
+class DebiasNewProcessor(DataProcessor):
+    """Processor for the SST-2 data set (GLUE version)."""
+
+    def get_example_from_tensor_dict(self, tensor_dict):
+        """See base class."""
+        return InputExample(
+            tensor_dict["idx"].numpy(),
+            tensor_dict["sentence"].numpy().decode("utf-8"),
+            None,
+            str(tensor_dict["label"].numpy()),
+            tensor_dict['ind'].numpy()
+        )
+
+    def read_csv(self, input_file, quotechar='"'):
+        """Reads a tab separated value file."""
+        df = pd.read_csv(input_file)
+        return df
+
+    def read_txt(self, input_file):
+        """Reads a tab separated value file."""
+        with open(input_file, "r", encoding="utf-8-sig") as f:
+            return list(f)
+
+    def get_train_examples(self, data_dir, train_dataset):
+        """See base class."""
+        return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset)), "train")
+
+    def get_dev_examples(self, data_dir, dev_dataset):
+        """See base class."""
+        return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset)), "dev")
+
+    def get_merged_examples(self, data_dir, train_dataset, teacher_data_dir, teacher_dataset):
+        return self._create_examples(self.merge_csvs(self.read_csv(os.path.join(data_dir, train_dataset)), \
+                self.read_csv(os.path.join(teacher_data_dir, teacher_dataset))))
+
+    def merge_csvs(self, train, teacher):
+        teacher = teacher[['scores', 'indices']]
+        #teacher['indices'] = teacher['indices'].astype('int32')
+        train.rename({'ind': 'indices'}, axis='columns', inplace=True)
+        return pd.join(train,teacher, on='indices', how='left')
+
+    def get_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self.read_csv(data_dir,'"'), "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1"]
+
+    def _create_examples(self, df, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        teacher_probs = []
+        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
+            text_a = line[1]
+            label = str(line[2])
+            probs = line[4]
+            teacher_probs.append([1-probs, probs])
+            examples.append(InputExample(guid=line[3], text_a=text_a, text_b=None, label=label))
+        return teacher_probs, examples
 
 class ToxicProcessor(DataProcessor):
     """Processor for the SST-2 data set (GLUE version)."""
@@ -601,6 +661,7 @@ glue_tasks_num_labels = {
 glue_processors = {
     "toxic":ToxicNewProcessor,  # Our code
     "shallow":ShallowNewProcessor,  # Our code
+    "debias":DebiasNewProcessor,  # Our code
     "toxic-davison":ToxicDavisonProcessor,
     "toxic_trans":ToxicTransProcessor
 }

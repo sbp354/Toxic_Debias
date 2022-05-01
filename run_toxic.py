@@ -131,10 +131,6 @@ def train(args, train_dataset, model, tokenizer):
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
-    # Adding Debiasing teacher probs loading
-    if args.mode != "none":
-        label_ids, teacher_probs = load_teacher_probs(args)
-
     if args.max_steps > 0:
         t_total = args.max_steps
         args.num_train_epochs = args.max_steps // (len(train_dataloader) // args.gradient_accumulation_steps) + 1
@@ -275,6 +271,9 @@ def train(args, train_dataset, model, tokenizer):
             if args.ensemble_bias:
                 inputs["bias"]= batch[4]
             
+            if args.mode != 'none':
+                teacher_probs = batch[-1]
+
             outputs = model(**inputs)
 
             """ New code below for custom loss functions
@@ -283,7 +282,7 @@ def train(args, train_dataset, model, tokenizer):
             but for now just set this to null values
             """ 
             if args.mode == 'none':
-                loss = loss_fn(None,outputs.logits,None, None,inputs['labels']) # 
+                loss = loss_fn(None,outputs.logits,None, None,inputs['labels']) 
             else: 
                 loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
             # The line below was the old code
@@ -484,7 +483,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     processor = processors[task]()
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
-    if args.task_name == "shallow":
+    if args.task_name == "shallow" or args.task_name == "debias":
         d = args.dev_dataset if evaluate else args.train_dataset
         s = d[:-4].split("_")  # getting the 
         
@@ -524,7 +523,11 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             if args.task_name == "shallow":
                 indices, examples  = (
                 processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
-                ) 
+                )
+            elif args.task_name == "debias" and not evaluate:
+                teacher_probs, examples  = (
+                processor.get_merged_examples(args.data_dir, args.train_dataset, args.teacher_data_dir, args.teacher_dataset)
+                )
             else:
                 examples = (
                     processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
@@ -544,10 +547,6 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
 
     if args.local_rank == 0 and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
-
-    # if args.mode != 'none':
-    #     if args.teacher_data_dir != None:
-    #         teacher_probs = pd.read_csv(args.teacher_data_dir)
 
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
@@ -569,12 +568,12 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         if args.task_name == "shallow":
             all_indices = torch.tensor(indices, dtype=torch.long)
             dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_indices)
+        elif args.task_name == "debias":
+            all_tprobs = torch.tensor(teacher_probs, dtype=torch.float)
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_tprobs)
         else:
             dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)#, all_example_ids)
         return dataset
-    # if args.mode != 'none':
-    #     all_teacher_probs = torch.tensor([teacher_probs, 1 - teacher_probs], dtype=torch.float)
-    #     dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
     
     if args.task_name == "shallow":
         all_indices = torch.tensor(indices, dtype=torch.long)
@@ -653,6 +652,13 @@ def main():
         type=str,
         required=True,
         help="Which finetuning training dataset to use",
+    )
+    parser.add_argument(
+        "--teacher_dataset",
+        default=None,
+        type=str,
+        required=False,
+        help="Probabilities outputted by a shallowly trained model for the train dataset",
     )
     parser.add_argument(
         "--dev_dataset",
