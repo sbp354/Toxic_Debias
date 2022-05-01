@@ -496,17 +496,30 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     processor = processors[task]()
     output_mode = output_modes[task]
     # Load data features from cache or dataset file
-    cached_features_file = os.path.join(
-        args.data_dir, 
-        args.dev_dataset if evaluate else args.train_dataset,
-        "cached_{}_{}_{}_{}_{}".format(
-            "dev" if evaluate else "train",
-            list(filter(None, args.model_name_or_path.split("/"))).pop(),
-            str(args.max_seq_length),
-            str(task),
+    if args.task_name == "shallow":
+        d = args.dev_dataset if evaluate else args.train_dataset
+        s = d[:-4].split("_")  # getting the 
+        
+        cached_features_file = os.path.join(
+                args.data_dir,
+                "cached_{}_{}_{}_{}".format(
+                    "dev" if evaluate else "train",
+                list(filter(None, args.model_name_or_path.split("/"))).pop(),
+                str(args.max_seq_length),  
+                '_'.join(s[2:])),
+            )
+    else:
+        cached_features_file = os.path.join(
+            args.data_dir, 
             args.dev_dataset if evaluate else args.train_dataset,
-        ),
-    )
+            "cached_{}_{}_{}_{}_{}".format(
+                "dev" if evaluate else "train",
+                list(filter(None, args.model_name_or_path.split("/"))).pop(),
+                str(args.max_seq_length),
+                str(task),
+                args.dev_dataset if evaluate else args.train_dataset,
+            ),
+        )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
@@ -532,6 +545,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             output_mode=output_mode
         )
         if args.local_rank in [-1, 0]:
+            print(cached_features_file)
             logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(features, cached_features_file)
 
