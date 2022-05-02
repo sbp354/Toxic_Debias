@@ -482,8 +482,10 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
 
     processor = processors[task]()
     output_mode = output_modes[task]
+    if args.task_name == "debias" and evaluate:
+        processor = processors['toxic']
     # Load data features from cache or dataset file
-    if args.task_name == "shallow" or args.task_name == "debias":
+    if args.task_name == "shallow" or (args.task_name == "debias" and not evaluate):
         d = args.dev_dataset if evaluate else args.train_dataset
         s = d[:-4].split("_")  # getting the 
         
@@ -572,17 +574,17 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             all_tprobs = torch.tensor(teacher_probs, dtype=torch.float)
             dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_tprobs)
         else:
-            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)#, all_example_ids)
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)
         return dataset
     
     if args.task_name == "shallow":
         all_indices = torch.tensor(indices, dtype=torch.long)
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_indices)
-    elif args.task_name == "debias":
+    elif args.task_name == "debias" and not evaluate:
         all_tprobs = torch.tensor(teacher_probs, dtype=torch.float)
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_tprobs)
     else: 
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)#, all_example_ids)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)
     return dataset
 
 
