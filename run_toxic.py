@@ -483,7 +483,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     processor = processors[task]()
     output_mode = output_modes[task]
     if args.task_name == "debias" and evaluate:
-        processor = processors['toxic']
+        processor = processors['toxic']()
     # Load data features from cache or dataset file
     if args.task_name == "shallow" or (args.task_name == "debias" and not evaluate):
         d = args.dev_dataset if evaluate else args.train_dataset
