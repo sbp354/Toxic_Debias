@@ -541,7 +541,7 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             output_mode=output_mode
         )
         if args.local_rank in [-1, 0]:
-            print(cached_features_file)
+            #print(cached_features_file)
             logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(features, cached_features_file)
 
@@ -578,6 +578,9 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
     if args.task_name == "shallow":
         all_indices = torch.tensor(indices, dtype=torch.long)
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_indices)
+    elif args.task_name == "debias":
+        all_tprobs = torch.tensor(teacher_probs, dtype=torch.float)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_tprobs)
     else: 
         dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)#, all_example_ids)
     return dataset

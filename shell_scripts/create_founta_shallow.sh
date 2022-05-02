@@ -4,11 +4,10 @@ export TRAIN_DATASET=founta
 export MODE=random
 export PERCENT=.005
 
-python /scratch/pg2255/nlu/Toxic_Debias/src/shallow_subsample.py \
+python /scratch/dmm9812/Toxic_Debias/src/shallow_subsample.py \
   --overwrite_output_dir \
   --data_dir $TOXIC_DIR \
   --train_dataset $TRAIN_DATASET \
-  --output_dir $TOXIC_DIR
-  --mode $MODE
+  --output_dir $TOXIC_DIR \
+  --mode $MODE \
   --sample_percent $PERCENT
-  

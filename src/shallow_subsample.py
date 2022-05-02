@@ -38,12 +38,12 @@ def random_perc(args):
     elif args.train_dataset == 'civil_comments_0.5':
         train_file = 'civil_train_0.5_finetune.csv'
 
-    df = pd.read_csv(os.path.join(args.data_dir, train_file), header=0)
+    df = pd.read_csv(os.path.join(args.data_dir, train_file), header=None, names=['text', 'label'])
 
     #skiprows=lambda i: i>0 and random.random() > perc)
     
     # We need indices of the original rows for teacher predictions
-    df['ind'] = [x for x in range(0, len(df.values))]
+    df['indices'] = [x for x in range(0, len(df.values))]
 
     if args.mode == "random":
         df_shallow = df.sample(frac = args.sample_percent)

@@ -329,8 +329,6 @@ class DebiasNewProcessor(DataProcessor):
 
     def merge_csvs(self, train, teacher):
         teacher = teacher[['scores', 'indices']]
-        #teacher['indices'] = teacher['indices'].astype('int32')
-        train.rename({'ind': 'indices'}, axis='columns', inplace=True)
         return train.join(teacher.set_index('indices'), on='indices', how='left')
 
     def get_examples(self, data_dir):
@@ -345,13 +343,13 @@ class DebiasNewProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         examples = []
         teacher_probs = []
-        print(df.columns)
-        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
+        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]], df[df.columns[4]])):
+            guid = "%s-%s" % (set_type, i)
             text_a = line[1]
             label = str(line[2])
-            probs = line[4]
+            probs = line[3]
             teacher_probs.append([1-probs, probs])
-            examples.append(InputExample(guid=line[3], text_a=text_a, text_b=None, label=label))
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return teacher_probs, examples
 
 class ToxicProcessor(DataProcessor):

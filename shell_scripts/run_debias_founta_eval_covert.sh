@@ -1,17 +1,15 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=Debias
-export TRAIN_DATASET=founta/founta_train_shallow_remainder_random_0.01.csv
-export TEACHER_DIR=/scratch/pg2255/nlu/run_results/models/founta/roberta-large
-export TEACHER_DATASET=finetune_founta_train_shallow_remainder_random_0.01.csv_results.csv
+export TRAIN_DATASET=founta/founta_train_shallow_remainder_random_0.005_seed42.csv
+export TEACHER_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta/roberta-large
+export TEACHER_DATASET=finetune_founta/founta_train_shallow_remainder_random_0.005_seed42.csv_results.csv
 export DEV_DATASET=covert_comments
 export LOSS=bias_product_by_teacher
 
-export DATA=$1
-export RAN=$2
-export MODEL_DIR=/scratch/pg2255/nlu/run_results/models/founta
+export MODEL_DIR=/scratch/dmm9812/NLU/models/founta
 
-python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
+python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
   --model_type roberta \
   --model_name_or_path roberta-large \
   --task_name $TASK_NAME \

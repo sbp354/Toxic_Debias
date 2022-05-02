@@ -1,16 +1,12 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=Shallow
-#export TRAIN_DATASET=founta_train_shallow_random_0.01.csv
-export TRAIN_DATASET=founta_train_shallow_random_005.csv
-#export DEV_DATASET=founta_train_shallow_remainder_random_0.01.csv
-export DEV_DATASET=founta_train_shallow_remainder_random_005.csv
+export TRAIN_DATASET=founta/founta_train_shallow_random_0.005_seed42.csv
+export DEV_DATASET=founta/founta_train_shallow_remainder_random_0.005_seed42.csv
 
-export DATA=$1
-export RAN=$2
 export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
 
-python /scratch/pg2255/nlu/Toxic_Debias/run_toxic.py \
+python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
   --model_type roberta \
   --model_name_or_path roberta-large \
   --task_name $TASK_NAME \
