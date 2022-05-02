@@ -437,14 +437,15 @@ def evaluate(args, model, tokenizer, prefix=""):
         scores = scores.reshape(-1,1)
         pred_labels = pred_labels.reshape(-1,1)
         out_label_ids = out_label_ids.reshape(-1,1)
-        indices = indices.reshape(-1,1) 
         
         #write out predictions and output_label_ids
         if args.task_name == "shallow":
+            indices = indices.reshape(-1,1) 
             # This is so that for the shallow task we also have the index of the original set
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids,indices), axis = 1)
             results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels','indices'])
             results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
+            
         else: 
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
             results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
