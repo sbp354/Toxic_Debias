@@ -321,7 +321,18 @@ class DebiasNewProcessor(DataProcessor):
 
     def get_dev_examples(self, data_dir, dev_dataset):
         """See base class."""
-        return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset)), "dev")
+        if dev_dataset == 'founta':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'founta_test_finetune.csv')), "dev")
+        elif dev_dataset == 'civil_comments':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_test_finetune.csv')), "dev")
+        elif dev_dataset == 'civil_comments_0.5':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_test_0.5_finetune.csv')), "dev")
+        elif dev_dataset == 'SBIC':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'sbic_test_finetune.csv')), "dev")
+        elif dev_dataset == 'covert_comments':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'covert_val_0.5_finetune.csv')), "dev")
+        elif dev_dataset == 'bibifi':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'bibifi_test_finetune.csv')), "dev")
 
     def get_merged_examples(self, data_dir, train_dataset, teacher_data_dir, teacher_dataset):
         return self._create_examples(self.merge_csvs(self.read_csv(os.path.join(data_dir, train_dataset)), \
