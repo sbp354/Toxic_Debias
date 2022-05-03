@@ -24,6 +24,7 @@ import logging
 import os
 import csv
 import pandas as pd
+import re
 
 from transformers import is_tf_available
 from transformers import DataProcessor, InputExample, InputFeatures
@@ -239,6 +240,128 @@ class ToxicNewProcessor(DataProcessor):
             label = str(line[1])
             examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return examples
+
+class ShallowNewProcessor(DataProcessor):
+    """Processor for the SST-2 data set (GLUE version)."""
+
+    def get_example_from_tensor_dict(self, tensor_dict):
+        """See base class."""
+        return InputExample(
+            tensor_dict["idx"].numpy(),
+            tensor_dict["sentence"].numpy().decode("utf-8"),
+            None,
+            str(tensor_dict["label"].numpy()),
+            tensor_dict['ind'].numpy()
+        )
+
+    def read_csv(self, input_file, quotechar='"'):
+        """Reads a tab separated value file."""
+        df = pd.read_csv(input_file)
+        return df
+
+    def read_txt(self, input_file):
+        """Reads a tab separated value file."""
+        with open(input_file, "r", encoding="utf-8-sig") as f:
+            return list(f)
+
+    def get_train_examples(self, data_dir, train_dataset):
+        """See base class."""
+        return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset)), "train")
+
+    def get_dev_examples(self, data_dir, dev_dataset):
+        """See base class."""
+        return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset)), "dev")
+
+    def get_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self.read_csv(data_dir,'"'), "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1"]
+
+    def _create_examples(self, df, set_type):
+        """Creates examples for the training and dev sets."""
+        indices = []
+        examples = []
+        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]])):
+            text_a = line[1]
+            label = str(line[2])
+            ind = line[0]  
+            indices.append(ind)
+            examples.append(InputExample(guid=ind, text_a=text_a, text_b=None, label=label))#, ind=ind))
+        return indices, examples
+
+class DebiasNewProcessor(DataProcessor):
+    """Processor for the SST-2 data set (GLUE version)."""
+
+    def get_example_from_tensor_dict(self, tensor_dict):
+        """See base class."""
+        return InputExample(
+            tensor_dict["idx"].numpy(),
+            tensor_dict["sentence"].numpy().decode("utf-8"),
+            None,
+            str(tensor_dict["label"].numpy()),
+            tensor_dict['ind'].numpy()
+        )
+
+    def read_csv(self, input_file, quotechar='"'):
+        """Reads a tab separated value file."""
+        df = pd.read_csv(input_file)
+        return df
+
+    def read_txt(self, input_file):
+        """Reads a tab separated value file."""
+        with open(input_file, "r", encoding="utf-8-sig") as f:
+            return list(f)
+
+    def get_train_examples(self, data_dir, train_dataset):
+        """See base class."""
+        return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset)), "train")
+
+    def get_dev_examples(self, data_dir, dev_dataset):
+        """See base class."""
+        if dev_dataset == 'founta':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'founta_test_finetune.csv')), "dev")
+        elif dev_dataset == 'civil_comments':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_test_finetune.csv')), "dev")
+        elif dev_dataset == 'civil_comments_0.5':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_test_0.5_finetune.csv')), "dev")
+        elif dev_dataset == 'SBIC':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'sbic_test_finetune.csv')), "dev")
+        elif dev_dataset == 'covert_comments':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'covert_val_0.5_finetune.csv')), "dev")
+        elif dev_dataset == 'bibifi':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'bibifi_test_finetune.csv')), "dev")
+
+    def get_merged_examples(self, data_dir, train_dataset, teacher_data_dir, teacher_dataset):
+        return self._create_examples(self.merge_csvs(self.read_csv(os.path.join(data_dir, train_dataset)), \
+                self.read_csv(os.path.join(teacher_data_dir, teacher_dataset))), "train")
+
+    def merge_csvs(self, train, teacher):
+        teacher = teacher[['scores', 'indices']]
+        return train.join(teacher.set_index('indices'), on='indices', how='left')
+
+    def get_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self.read_csv(data_dir,'"'), "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1"]
+
+    def _create_examples(self, df, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        teacher_probs = []
+        for (i, line) in enumerate(zip(df[df.columns[0]], df[df.columns[1]], df[df.columns[2]], df[df.columns[4]])):
+            guid = "%s-%s" % (set_type, i)
+            text_a = line[1]
+            label = str(line[2])
+            probs = line[3]
+            teacher_probs.append([1-probs, probs])
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+        return teacher_probs, examples
 
 class ToxicProcessor(DataProcessor):
     """Processor for the SST-2 data set (GLUE version)."""
@@ -546,7 +669,9 @@ glue_tasks_num_labels = {
 }
 
 glue_processors = {
-    "toxic":ToxicNewProcessor,
+    "toxic":ToxicNewProcessor,  # Our code
+    "shallow":ShallowNewProcessor,  # Our code
+    "debias":DebiasNewProcessor,  # Our code
     "toxic-davison":ToxicDavisonProcessor,
     "toxic_trans":ToxicTransProcessor
 }
@@ -566,4 +691,6 @@ glue_output_modes = {
     "qnli": "classification",
     "rte": "classification",
     "wnli": "classification",
+    "shallow": "classification",  # Our code
+    "debias": "classification"  # Our code
 }

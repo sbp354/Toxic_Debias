@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import random
+import re
 
 import numpy as np
 import torch
@@ -70,7 +71,7 @@ from src.toxic import glue_processors as processors
 from src.modeling_roberta_debias import RobertaForDebiasSequenceClassification 
 from src.modeling_roberta_debias import RobertaForTransSequenceClassification 
 from src import py_utils
-from src.clf_loss_functions import *
+from src import clf_loss_functions
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -129,10 +130,6 @@ def train(args, train_dataset, model, tokenizer):
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
-
-    # Adding Debiasing teacher probs loading
-    if args.mode != "none":
-        label_ids, teacher_probs = load_teacher_probs(args)
 
     if args.max_steps > 0:
         t_total = args.max_steps
@@ -214,8 +211,46 @@ def train(args, train_dataset, model, tokenizer):
     train_iterator = trange(
         epochs_trained, int(args.num_train_epochs), desc="Epoch", disable=args.local_rank not in [-1, 0],
     )
+
     set_seed(args)  # Added here for reproductibility
     model_acc = 0
+
+    # Custom Loss Functions
+    if args.mode == "none":
+        loss_fn = clf_loss_functions.Plain()
+    elif args.mode == "distill":
+        loss_fn = clf_loss_functions.DistillLoss()
+    elif args.mode == "smoothed_distill":
+        loss_fn = clf_loss_functions.SmoothedDistillLoss()
+    elif args.mode == "smoothed_distill_annealed":
+        loss_fn = clf_loss_functions.SmoothedDistillLossAnnealed()
+    elif args.mode == "theta_smoothed_distill":
+        loss_fn = clf_loss_functions.ThetaSmoothedDistillLoss(args.theta)
+    elif args.mode == "label_smoothing":
+        loss_fn = clf_loss_functions.LabelSmoothing(3)
+    elif args.mode == "reweight_baseline":
+        loss_fn = clf_loss_functions.ReweightBaseline()
+    elif args.mode == "permute_smoothed_distill":
+        loss_fn = clf_loss_functions.PermuteSmoothedDistillLoss()
+    elif args.mode == "smoothed_reweight_baseline":
+        loss_fn = clf_loss_functions.SmoothedReweightLoss()
+    elif args.mode == "bias_product_baseline":
+        loss_fn = clf_loss_functions.BiasProductBaseline()
+    elif args.mode == "learned_mixin_baseline":
+        loss_fn = clf_loss_functions.LearnedMixinBaseline(args.penalty)
+    elif args.mode == "reweight_by_teacher":
+        loss_fn = clf_loss_functions.ReweightByTeacher()
+    elif args.mode == "reweight_by_teacher_annealed":
+        loss_fn = clf_loss_functions.ReweightByTeacherAnnealed()
+    elif args.mode == "bias_product_by_teacher":
+        loss_fn = clf_loss_functions.BiasProductByTeacher()
+    elif args.mode == "bias_product_by_teacher_annealed":
+        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
+    elif args.mode == "focal_loss":
+        loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
+    else:
+        raise RuntimeError()
+
     for _ in train_iterator:
         epoch_iterator = tqdm(train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
@@ -236,8 +271,22 @@ def train(args, train_dataset, model, tokenizer):
             if args.ensemble_bias:
                 inputs["bias"]= batch[4]
             
+            if args.mode != 'none':
+                teacher_probs = batch[-1]
+
             outputs = model(**inputs)
-            loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
+
+            """ New code below for custom loss functions
+            loss_fn(hidden,logits,bias, teacher_probs,labels) 
+            hidden and bias only used by the LearnedMixinBaseline so will need to fix it for that
+            but for now just set this to null values
+            """ 
+            if args.mode == 'none':
+                loss = loss_fn(None,outputs.logits,None, None,inputs['labels']) 
+            else: 
+                loss = loss_fn(None,outputs.logits,None, teacher_probs,inputs['labels'])
+            # The line below was the old code
+            #loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -346,10 +395,10 @@ def evaluate(args, model, tokenizer, prefix=""):
         nb_eval_steps = 0
         preds = None
         out_label_ids = None
+        indices = None
         for batch in tqdm(eval_dataloader, desc="Evaluating"):
             model.eval()
             batch = tuple(t.to(args.device) for t in batch)
-
             with torch.no_grad():
                 inputs = {"input_ids": batch[0], "attention_mask": batch[1], "labels": batch[3]}
                 if args.model_type != "distilbert":
@@ -366,11 +415,14 @@ def evaluate(args, model, tokenizer, prefix=""):
                 preds = logits.detach().cpu().numpy()
                 scores = probas.detach().cpu().numpy()
                 out_label_ids = inputs["labels"].detach().cpu().numpy()
+                if args.task_name == "shallow":
+                   indices = batch[-1].detach().cpu().numpy()
             else:
                 preds = np.append(preds, logits.detach().cpu().numpy(), axis=0)
                 out_label_ids = np.append(out_label_ids, inputs["labels"].detach().cpu().numpy(), axis=0)
                 scores = np.append(scores, probas.detach().cpu().numpy(), axis =0)
-
+                if args.task_name == "shallow":
+                    indices = np.append(indices, batch[-1].detach().cpu().numpy(), axis=0)    
         eval_loss = eval_loss / nb_eval_steps
         if args.output_mode == "classification":
             max_logits = np.max(preds, axis =1)
@@ -385,16 +437,27 @@ def evaluate(args, model, tokenizer, prefix=""):
         scores = scores.reshape(-1,1)
         pred_labels = pred_labels.reshape(-1,1)
         out_label_ids = out_label_ids.reshape(-1,1)
-
+        
         #write out predictions and output_label_ids
-        results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
-        results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
-        print(results_df.head())
-        results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
+        if args.task_name == "shallow":
+            indices = indices.reshape(-1,1) 
+            # This is so that for the shallow task we also have the index of the original set
+            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids,indices), axis = 1)
+            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels','indices'])
+            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
+            
+        else: 
+            results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
+            results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
+            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
+        print(results_df.head(5))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
         else:
-            output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.train_dataset}_challenge_{args.dev_dataset}_eval_results.txt")
+            if args.task_name == "shallow":
+                output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.dev_dataset}_eval_results.txt")
+            else: 
+                output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.train_dataset}_challenge_{args.dev_dataset}_eval_results.txt")
 
         with open(output_eval_file, "w") as writer:
             logger.info("***** Eval results {} *****".format(prefix))
@@ -420,18 +483,33 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
 
     processor = processors[task]()
     output_mode = output_modes[task]
+    if args.task_name == "debias" and evaluate:
+        processor = processors['toxic']()
     # Load data features from cache or dataset file
-    cached_features_file = os.path.join(
-        args.data_dir, 
-        args.dev_dataset if evaluate else args.train_dataset,
-        "cached_{}_{}_{}_{}_{}".format(
-            "dev" if evaluate else "train",
-            list(filter(None, args.model_name_or_path.split("/"))).pop(),
-            str(args.max_seq_length),
-            str(task),
+    if args.task_name == "shallow" or (args.task_name == "debias" and not evaluate):
+        d = args.dev_dataset if evaluate else args.train_dataset
+        s = d[:-4].split("_")  # getting the 
+        
+        cached_features_file = os.path.join(
+                args.data_dir,
+                "cached_{}_{}_{}_{}".format(
+                    "dev" if evaluate else "train",
+                list(filter(None, args.model_name_or_path.split("/"))).pop(),
+                str(args.max_seq_length),  
+                '_'.join(s[2:])),
+            )
+    else:
+        cached_features_file = os.path.join(
+            args.data_dir, 
             args.dev_dataset if evaluate else args.train_dataset,
-        ),
-    )
+            "cached_{}_{}_{}_{}_{}".format(
+                "dev" if evaluate else "train",
+                list(filter(None, args.model_name_or_path.split("/"))).pop(),
+                str(args.max_seq_length),
+                str(task),
+                args.dev_dataset if evaluate else args.train_dataset,
+            ),
+        )
     if os.path.exists(cached_features_file) and not args.overwrite_cache:
         logger.info("Loading features from cached file %s", cached_features_file)
         features = torch.load(cached_features_file)
@@ -445,9 +523,18 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         if args.eval_data_dir != None:
             examples = processor.get_examples(args.eval_data_dir)
         else:
-            examples = (
+            if args.task_name == "shallow":
+                indices, examples  = (
                 processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
-            )
+                )
+            elif args.task_name == "debias" and not evaluate:
+                teacher_probs, examples  = (
+                processor.get_merged_examples(args.data_dir, args.train_dataset, args.teacher_data_dir, args.teacher_dataset)
+                )
+            else:
+                examples = (
+                    processor.get_dev_examples(args.data_dir, args.dev_dataset) if evaluate else processor.get_train_examples(args.data_dir, args.train_dataset)
+                )
         
         features = convert_examples_to_features(
             examples,
@@ -457,20 +544,17 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
             output_mode=output_mode
         )
         if args.local_rank in [-1, 0]:
+            #print(cached_features_file)
             logger.info("Saving features into cached file %s", cached_features_file)
             torch.save(features, cached_features_file)
 
     if args.local_rank == 0 and not evaluate:
         torch.distributed.barrier()  # Make sure only the first process in distributed training process the dataset, and the others will use the cache
 
-    if args.mode != 'none':
-        if args.teacher_data_dir != None:
-            teacher_probs = pd.read_csv(args.teacher_data_dir)
-
     # Convert to Tensors and build dataset
     all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
     all_attention_mask = torch.tensor([f.attention_mask for f in features], dtype=torch.long)
-    all_example_ids = torch.tensor(range(len(f.input_ids)), dtype=torch.long)
+    #all_example_ids = torch.tensor(range(len(f.input_ids)), dtype=torch.long)
     if args.model_type in ["bert", "xlnet", "albert"]:
       all_token_type_ids = torch.tensor([f.token_type_ids for f in features], dtype=torch.long)
     else:
@@ -479,16 +563,29 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         all_labels = torch.tensor([f.label for f in features], dtype=torch.long)
     elif output_mode == "regression":
         all_labels = torch.tensor([f.label for f in features], dtype=torch.float)
+
+
     if args.ensemble_bias and not evaluate:
         all_bias = load_bias(args)
         all_bias = torch.tensor([b for b in all_bias], dtype=torch.float)
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_example_ids)
+        if args.task_name == "shallow":
+            all_indices = torch.tensor(indices, dtype=torch.long)
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_indices)
+        elif args.task_name == "debias":
+            all_tprobs = torch.tensor(teacher_probs, dtype=torch.float)
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias, all_tprobs)
+        else:
+            dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_bias)
         return dataset
-    if args.mode != 'none':
-        all_teacher_probs = torch.tensor([teacher_probs, 1 - teacher_probs], dtype=torch.float)
-        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids, all_teacher_probs)
     
-    dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_example_ids)
+    if args.task_name == "shallow":
+        all_indices = torch.tensor(indices, dtype=torch.long)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_indices)
+    elif args.task_name == "debias" and not evaluate:
+        all_tprobs = torch.tensor(teacher_probs, dtype=torch.float)
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels, all_tprobs)
+    else: 
+        dataset = TensorDataset(all_input_ids, all_attention_mask, all_token_type_ids, all_labels)
     return dataset
 
 
@@ -517,7 +614,7 @@ def main():
         default=None,
         type=str,
         required=False,
-        help="The teacher probs data dir. Should contain the .tsv files (or other data files) for the task.",
+        help="The teacher probs data dir. Should contain the .csv files (or other data files) for the task.",
     )
 
     parser.add_argument(
@@ -561,6 +658,13 @@ def main():
         type=str,
         required=True,
         help="Which finetuning training dataset to use",
+    )
+    parser.add_argument(
+        "--teacher_dataset",
+        default=None,
+        type=str,
+        required=False,
+        help="Probabilities outputted by a shallowly trained model for the train dataset",
     )
     parser.add_argument(
         "--dev_dataset",
@@ -668,9 +772,6 @@ def main():
     parser.add_argument("--server_port", type=str, default="", help="For distant debugging.")
     
     # Debiasing arguments
-    parser.add_argument("--do_shallow",
-                        action='store_true',
-                        help="Train a shallow model on 2K samples for 5 epochs that evaluates on the remaining training data.")
     parser.add_argument("--mode", 
                         choices=["none", "distill", "smoothed_distill", "smoothed_distill_annealed",
                                 "label_smoothing", "theta_smoothed_distill", "reweight_baseline",
@@ -814,7 +915,7 @@ def main():
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        if args.model == 'roberta':
+        if args.model_type == 'roberta':
             tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
             checkpoints = [args.output_dir]
             print(f"Loading tokenizer from {args.output_dir}")
