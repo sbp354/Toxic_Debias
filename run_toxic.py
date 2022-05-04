@@ -449,7 +449,12 @@ def evaluate(args, model, tokenizer, prefix=""):
         else: 
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
             results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
-            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.train_dataset}_challenge_{args.dev_dataset}_results.csv'))
+            if args.mode == 'none':
+                results_df.to_csv(os.path.join(eval_output_dir, 'finetune_' + args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset[:-4]+"_results.csv"))
+            else:
+                if os.path.exists(os.path.join(eval_output_dir, args.mode))==False:
+                    os.mkdir(os.path.join(eval_output_dir, args.mode))
+                results_df.to_csv(os.path.join(eval_output_dir, args.mode, 'finetune_' + args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset[:-4]+"_results.csv"))
         print(results_df.head(5))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
@@ -457,8 +462,12 @@ def evaluate(args, model, tokenizer, prefix=""):
             if args.task_name == "shallow":
                 output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.dev_dataset}_eval_results.txt")
             else: 
-                output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.train_dataset}_challenge_{args.dev_dataset}_eval_results.txt")
-
+                if args.mode == 'none':
+                    output_eval_file = os.path.join(eval_output_dir, prefix, "finetune_"+args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset+"_eval_results.txt")
+                else:
+                    if os.path.exists(os.path.join(eval_output_dir, args.mode))==False:
+                        os.mkdir(os.path.join(eval_output_dir, args.mode))
+                    output_eval_file = os.path.join(eval_output_dir, args.mode, "finetune_"+args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset+"_eval_results.txt")
         with open(output_eval_file, "w") as writer:
             logger.info("***** Eval results {} *****".format(prefix))
             for key in sorted(result.keys()):
