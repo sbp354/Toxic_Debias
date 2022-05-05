@@ -3,7 +3,7 @@ export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=Toxic
 export TRAIN_DATASET=civil_comments_0.5
 export DEV_DATASET=covert_comments
-export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta/xlm_baseline
+export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
 
 python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
   --model_type xlm \
