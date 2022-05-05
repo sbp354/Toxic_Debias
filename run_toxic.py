@@ -220,6 +220,8 @@ def train(args, train_dataset, model, tokenizer):
         loss_fn = clf_loss_functions.Plain()
     elif args.mode == "distill":
         loss_fn = clf_loss_functions.DistillLoss()
+    elif args.mode == 'distill_annealed':
+        loss_fn = clf_loss_functions.DistillLossAnnealed()
     elif args.mode == "smoothed_distill":
         loss_fn = clf_loss_functions.SmoothedDistillLoss()
     elif args.mode == "smoothed_distill_annealed":
@@ -782,7 +784,7 @@ def main():
     
     # Debiasing arguments
     parser.add_argument("--mode", 
-                        choices=["none", "distill", "smoothed_distill", "smoothed_distill_annealed",
+                        choices=["none", "distill","distill_annealed", "smoothed_distill", "smoothed_distill_annealed",
                                 "label_smoothing", "theta_smoothed_distill", "reweight_baseline",
                                 "smoothed_reweight_baseline", "permute_smoothed_distill",
                                 "bias_product_baseline", "learned_mixin_baseline",
