@@ -5,9 +5,9 @@ export LABEL=true_labels
 export PRED=predictions
 export SCORE=scores
 
-python /scratch/dmm9812/Toxic_Debias/src/shallow_subsample.py \
+python /scratch/pg2255/nlu/Toxic_Debias/src/basic_metrics.py \
   --data_dir $TOXIC_DIR \
-  --results_csv $TRAIN_DATASET \
+  --results_csv $FILE \
   --label_name $LABEL \
   --pred_name $PRED \
   --score_name $SCORE

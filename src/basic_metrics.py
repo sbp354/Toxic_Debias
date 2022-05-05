@@ -79,7 +79,7 @@ def main():
     args = parser.parse_args()
 
 
-    df = pd.read_csv(os.path.join(args.data_dir, args.results_csv), header=True)
+    df = pd.read_csv(os.path.join(args.data_dir, args.results_csv))
     metrics = get_scores(df, args.label_name, args.pred_name, args.score_name)
     file_name = args.results_csv[:-4] + '_basic_metrics.txt'
     with open(os.path.join(args.data_dir, file_name), 'w') as f: 
