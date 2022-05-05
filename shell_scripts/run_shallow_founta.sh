@@ -7,8 +7,8 @@ export DEV_DATASET=founta/founta_train_shallow_remainder_random_0.005_seed42.csv
 export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
 
 python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
-  --model_type roberta \
-  --model_name_or_path roberta-large \
+  --model_type xlm \
+  --model_name_or_path xlm-mlm-en-2048 \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \
