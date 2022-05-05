@@ -32,6 +32,34 @@ class BiasProductByTeacher(ClfLossFunction):
         teacher_logits = torch.log(teacher_probs)
         return F.cross_entropy(logits + teacher_logits, labels)
 
+class BiasProductByTeacherAnnealed(ClfLossFunction):
+    def __init__(self, max_theta=1.0, min_theta=0.8,
+                 total_steps=12272, num_epochs=3):
+        super().__init__()
+        self.max_theta = max_theta
+        self.min_theta = min_theta
+        self.num_train_optimization_steps = total_steps
+        self.num_epochs = num_epochs
+        self.current_step = 0
+
+    def get_current_theta(self):
+        linspace_theta = np.linspace(self.max_theta, self.min_theta,
+                                     self.num_train_optimization_steps+self.num_epochs)
+        current_theta = linspace_theta[self.current_step]
+        self.current_step += 1
+        return current_theta
+
+    def forward(self, hidden, logits, bias, teacher_probs, labels):
+        logits = logits.float()  # In case we were in fp16 mode
+        logits = F.log_softmax(logits, 1)
+
+        current_theta = self.get_current_theta()
+        denom = (teacher_probs ** current_theta).sum(1).unsqueeze(1).expand_as(teacher_probs)
+        scaled_probs = (teacher_probs ** current_theta) / denom
+
+        teacher_logits = torch.log(scaled_probs)
+        return F.cross_entropy(logits + teacher_logits, labels)
+
 class DistillLoss(ClfLossFunction):
     def forward(self, hidden, logits, bias, teacher_probs, labels):
         softmaxf = torch.nn.Softmax(dim=1)
