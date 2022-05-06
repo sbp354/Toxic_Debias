@@ -55,7 +55,6 @@ def main():
                     required=True,
                     help="The input data dir. Should contain the .csv files with additional identitiy labels with each row corresponding to outputs.")
 
-
     parser.add_argument("--identities_csv",
                     default=None,
                     type=str,
