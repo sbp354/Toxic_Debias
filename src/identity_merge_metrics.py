@@ -48,23 +48,19 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir",
+
+    parser.add_argument("--identity_dir",
                     default=None,
                     type=str,
                     required=True,
                     help="The input data dir. Should contain the .csv files with additional identitiy labels with each row corresponding to outputs.")
 
-    parser.add_argument("--dev_dataset",
-                    default=None,
-                    type=str,
-                    required=True,
-                    help="The input data dir. Should contain the .csv files with additional identitiy labels with each row corresponding to outputs.")
 
     parser.add_argument("--identities_csv",
                     default=None,
                     type=str,
                     required=True,
-                    help="origional data frame from eval file contained labels of interest for post inference analysis")
+                    help="Original data frame from eval file containing labels of interest for post inference analysis")
 
     parser.add_argument("--model_dir",
                     default=None,
@@ -79,10 +75,16 @@ def main():
                     required=True,
                     help="Output of a model with predictions, scores, true label on an eval dataset",)
     
+    parser.add_argument("--output_dir",
+                    default="/scratch/sbp354/DSGA1012/Final_Project/models/results",
+                    type=str,
+                    required=False,
+                    help="metrics out put file name")
+
     parser.add_argument("--output_name",
                     default=None,
                     type=str,
-                    required=True,
+                    required=False,
                     help="metrics out put file name")
 
     parser.add_argument("--label_name", 
@@ -109,7 +111,19 @@ def main():
     args = parser.parse_args()
 
     identities_list = args.identities_list.split(',')
-    output_path =  os.path.join(args.data_dir, args.dev_dataset,args.output_name)
+
+    if args.output_name:
+        output_path =  os.path.join(args.output_dir,args.output_name)
+    else:
+        datasets = ['founta','civil_comments','civil_comments_0.5']
+        struct = ' '.join(args.data_dir.split()).split()  # This makes sure if there is / at the end its fine
+        model = struct[-2]
+        loss = struct[-1]
+        if model in datasets:
+            output_name = loss + args.results_csv[:-4]  # If no custom loss function then model name is here
+        else:
+            output_name = model + loss + args.results_csv[:-4]
+        output_path =  os.path.join(args.output_dir,output_name)
 
 
 
@@ -117,6 +131,22 @@ def main():
     identities_df =  pd.read_csv(os.path.join(args.data_dir, args.dev_dataset,args.identities_csv))
     merged_df = pd.concat([results_df, identities_df],axis=1)[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
 
+    # Civil identites requires binarization from floats and filtering
+    if args.identities_csv == "civil_test.csv":
+        df_civil_test_full = pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
+        df_civil_identities = df_civil_test_full[
+            (df_civil_test_full.male >= .5) |
+            (df_civil_test_full.female >= .5) |
+            (df_civil_test_full.white >= .5) |
+            (df_civil_test_full.black >= .5)]
+        # Throw away equal examples
+        identities = identities = identities[
+            ~(df_civil_identities.male == df_civil_identities.female) | 
+            ~(df_civil_identities.white == df_civil_identities.black)]
+        identities['is_female'] = np.where(identities.male > identities.female, 1.0, 0.0)
+        identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
+        identities_list = ['is_female', 'black']
+    
     metrics_dict_list = []
     print('Calculating Aggretage Metrics...')
     metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
