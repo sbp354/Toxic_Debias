@@ -45,6 +45,7 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
                 'auc-roc': auc_roc,
                 'fpr': recall_pos,  # FPR
                }
+    return metrics
 
 def main():
     parser = argparse.ArgumentParser()
@@ -127,9 +128,13 @@ def main():
 
     results_df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
     identities_df =  pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
+
     merged_df = pd.concat([results_df, identities_df],axis=1)
     # Civil identites requires binarization from floats and filtering
     if args.identities_csv == "civil_test.csv":
+        identities_m1 = identities_df.iloc[1: , :]
+        identities_m1.reset_index().drop(['index'],axis=1,inplace=True)
+        merged_df = pd.concat([results_df, identities_df],axis=1)
         df_civil_test_full = merged_df#pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
         df_civil_identities = df_civil_test_full[
             (df_civil_test_full.male >= .5) |
@@ -140,18 +145,12 @@ def main():
         identities = df_civil_identities[
             ~(df_civil_identities.male == df_civil_identities.female) | 
             ~(df_civil_identities.white == df_civil_identities.black)]
-        #print(identities.head())
-        #print(len(identities))
         identities['is_female'] = np.where(identities.male > identities.female, 1.0, 0.0)
-        #print(identities.is_female)
-        #print(len(identities.is_female))
         identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
         identities_list = ['is_female', 'black']
         merged_df = identities
-        print(merged_df)
 
     merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
-    print(merged_df.head())
     metrics_dict_list = []
     print('Calculating Aggretage Metrics...')
     metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
