@@ -219,7 +219,7 @@ def train(args, train_dataset, model, tokenizer):
     if args.mode == "none":
         loss_fn = clf_loss_functions.Plain()
     elif args.mode == "distill":
-        loss_fn = clf_loss_functions.DistillLoss()
+        loss_fn = clf_loss_functions.DistillLoss(total_steps = t_total)
     elif args.mode == 'distill_annealed':
         loss_fn = clf_loss_functions.DistillLossAnnealed()
     elif args.mode == "smoothed_distill":
@@ -247,7 +247,7 @@ def train(args, train_dataset, model, tokenizer):
     elif args.mode == "bias_product_by_teacher":
         loss_fn = clf_loss_functions.BiasProductByTeacher()
     elif args.mode == "bias_product_by_teacher_annealed":
-        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed()
+        loss_fn = clf_loss_functions.BiasProductByTeacherAnnealed(total_steps = t_total)
     elif args.mode == "focal_loss":
         loss_fn = clf_loss_functions.FocalLoss(gamma=args.focal_loss_gamma)
     else:
@@ -316,7 +316,7 @@ def train(args, train_dataset, model, tokenizer):
                 if args.local_rank in [-1, 0] and args.logging_steps > 0 and global_step % args.logging_steps == 0:
                     logs = {}
                     if (
-                        args.local_rank == -1 and args.evaluate_during_training
+                        args.local_rank == -1 and args.do_evaluate_during_training
                     ):  # Only evaluate when single GPU otherwise metrics may not average well
                         results = evaluate(args, model, tokenizer)
                         for key, value in results.items():
@@ -332,12 +332,12 @@ def train(args, train_dataset, model, tokenizer):
                     for key, value in logs.items():
                         tb_writer.add_scalar(key, value, global_step)
                     print(json.dumps({**logs, **{"step": global_step}}), flush=True)
-                    current_acc = logs["eval_acc"]
+                    #current_acc = logs["eval_acc"]
 
-                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0 and current_acc > model_acc:
+                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
-                    model_acc = current_acc
+                    #model_acc = current_acc
                     output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(101))
                     # Output_dir = args
                     if not os.path.exists(output_dir):
@@ -446,23 +446,23 @@ def evaluate(args, model, tokenizer, prefix=""):
             # This is so that for the shallow task we also have the index of the original set
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids,indices), axis = 1)
             results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels','indices'])
-            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_{args.dev_dataset}_results.csv'))
+            results_df.to_csv(os.path.join(eval_output_dir, f'finetune_' + args.dev_dataset.split("/")[-1][:-4]+'_results.csv'))
             
         else: 
             results_matrix = np.concatenate((pred_labels, max_logits, scores, out_label_ids), axis = 1)
             results_df = pd.DataFrame(results_matrix, columns = ['predictions', 'max_logits', 'scores', 'true_labels'])
             if args.mode == 'none':
-                results_df.to_csv(os.path.join(eval_output_dir, 'finetune_' + args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset[:-4]+"_results.csv"))
+                results_df.to_csv(os.path.join(eval_output_dir, 'finetune_' + args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset+"_results.csv"))
             else:
                 if os.path.exists(os.path.join(eval_output_dir, args.mode))==False:
                     os.mkdir(os.path.join(eval_output_dir, args.mode))
-                results_df.to_csv(os.path.join(eval_output_dir, args.mode, 'finetune_' + args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset[:-4]+"_results.csv"))
+                results_df.to_csv(os.path.join(eval_output_dir, args.mode, 'finetune_' + args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset+"_results.csv"))
         print(results_df.head(5))
         if args.eval_data_dir != None:
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
         else:
             if args.task_name == "shallow":
-                output_eval_file = os.path.join(eval_output_dir, prefix, f"finetune_{args.dev_dataset}_eval_results.txt")
+                output_eval_file = os.path.join(eval_output_dir, prefix, "finetune_"+args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
             else: 
                 if args.mode == 'none':
                     output_eval_file = os.path.join(eval_output_dir, prefix, "finetune_"+args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset+"_eval_results.txt")
@@ -503,12 +503,14 @@ def load_and_cache_examples(args, task, tokenizer, evaluate=False):
         
         cached_features_file = os.path.join(
                 args.data_dir,
+                args.dev_dataset.split("/")[0] if evaluate else args.train_dataset.split("/")[0],
                 "cached_{}_{}_{}_{}".format(
                     "dev" if evaluate else "train",
                 list(filter(None, args.model_name_or_path.split("/"))).pop(),
                 str(args.max_seq_length),  
-                '_'.join(s[2:])),
+                '_'.join(s[-5:])),
             )
+        print(f"setting up shallow cached_feature_file at: {cached_features_file}")
     else:
         cached_features_file = os.path.join(
             args.data_dir, 
@@ -717,7 +719,7 @@ def main():
     parser.add_argument("--do_eval", action="store_true", help="Whether to run eval on the dev set.")
     parser.add_argument("--ensemble_bias", action="store_true", help="Whether to use bias-only model to inform training")
     parser.add_argument(
-        "--evaluate_during_training", action="store_true", help="Rul evaluation during training at each logging step.",
+        "--do_evaluate_during_training", action=argparse.BooleanOptionalAction, help="Rul evaluation during training at each logging step.",
     )
     parser.add_argument(
         "--do_lower_case", action="store_true", help="Set this flag if you are using an uncased model.",
