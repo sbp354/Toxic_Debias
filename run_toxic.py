@@ -928,7 +928,7 @@ def main():
     # Evaluation
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
-        if args.model_type == 'roberta':
+        if args.model_type == 'roberta' or args.model_type == 'xlm':
             tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
             checkpoints = [args.output_dir]
             print(f"Loading tokenizer from {args.output_dir}")
