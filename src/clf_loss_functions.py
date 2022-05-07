@@ -38,7 +38,7 @@ class BiasProductByTeacherAnnealed(ClfLossFunction):
         super().__init__()
         self.max_theta = max_theta
         self.min_theta = min_theta
-        self.num_train_optimization_steps = total_steps
+        self.num_train_optimization_steps = int(total_steps)
         self.num_epochs = num_epochs
         self.current_step = 0
 
@@ -84,7 +84,9 @@ class DistillLossAnnealed(ClfLossFunction):
         linspace_theta = np.linspace(self.max_theta, self.min_theta,
                                      self.num_train_optimization_steps+self.num_epochs)
         current_theta = linspace_theta[self.current_step]
-        self.current_step += 1
+
+        if self.current_step < self.num_train_optimization_steps: 
+            self.current_step += 1
         return current_theta
 
     def forward(self, hidden, logits, bias, teacher_probs, labels):
@@ -133,7 +135,8 @@ class SmoothedDistillLossAnnealed(ClfLossFunction):
         linspace_theta = np.linspace(self.max_theta, self.min_theta,
                                      self.num_train_optimization_steps+self.num_epochs)
         current_theta = linspace_theta[self.current_step]
-        self.current_step += 1
+        if self.current_step < self.num_train_optimization_steps: 
+            self.current_step += 1
         return current_theta
 
     def forward(self, hidden, logits, bias, teacher_probs, labels):
@@ -194,7 +197,8 @@ class ReweightByTeacherAnnealed(ClfLossFunction):
         linspace_theta = np.linspace(self.max_theta, self.min_theta,
                                      self.num_train_optimization_steps+self.num_epochs)
         current_theta = linspace_theta[self.current_step]
-        self.current_step += 1
+        if self.current_step < self.num_train_optimization_steps: 
+            self.current_step += 1
         return current_theta
 
 
