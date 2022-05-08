@@ -78,14 +78,6 @@ def main():
                     required=False,
                     default="scores")
 
-    parser.add_argument(
-        "--pAPI",
-        default=None,
-        type=str,
-        required=False,
-        help="If pAPI create predictions column based off of toxicity score",
-    )
-
     parser.add_argument("--output_dir",
                     default="/scratch/sbp354/DSGA1012/Final_Project/models/results",
                     type=str,
@@ -113,7 +105,7 @@ def main():
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
-        if args.pAPI:
+        if not args.pred_name:
             output_name = args.results_csv[:-4] + '_basic_metrics.txt'
         else: 
             datasets = ['founta','civil_comments','civil_comments_0.5']
