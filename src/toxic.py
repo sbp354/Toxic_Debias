@@ -206,6 +206,8 @@ class ToxicNewProcessor(DataProcessor):
             return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset,'civil_train_finetune.csv')), "train")
         elif train_dataset == 'civil_comments_0.5':
             return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset, 'civil_train_0.5_finetune.csv')), "train")
+        elif train_dataset == 'civil_identities':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, train_dataset, 'civil_identities_train_finetune.csv')), "train")
 
     def get_dev_examples(self, data_dir, dev_dataset):
         """See base class."""
@@ -221,6 +223,8 @@ class ToxicNewProcessor(DataProcessor):
             return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'covert_val_0.5_finetune.csv')), "dev")
         elif dev_dataset == 'bibifi':
             return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'bibifi_test_finetune.csv')), "dev")
+        elif dev_dataset == 'civil_identities':
+            return self._create_examples(self.read_csv(os.path.join(data_dir, dev_dataset,'civil_identities_test_finetune.csv')), "dev")
 
 
     def get_examples(self, data_dir):
