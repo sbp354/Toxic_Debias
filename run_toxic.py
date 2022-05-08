@@ -338,7 +338,14 @@ def train(args, train_dataset, model, tokenizer):
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
                     #model_acc = current_acc
-                    if args.teacher_dataset:
+                    if args.task_name == "shallow":
+                        if str.find(args.train_dataset, "0.005")>-1:
+                            ckpt_samp = 'shallow-0.005'
+                        elif str.find(args.train_dataset, "0.01")>-1:
+                            ckpt_samp = 'shallow-0.01'
+                        else:
+                            ckpt_sampe = 'shallow'
+                    elif args.teacher_dataset:
                         if str.find(args.teacher_dataset, "0.005")>-1:
                             ckpt_samp = 0.005
                         elif str.find(args.teacher_dataset, "0.01")>-1:

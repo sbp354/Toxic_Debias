@@ -35,6 +35,8 @@ def random_perc(args):
         train_file = 'founta_train_finetune.csv'
     elif args.train_dataset == 'civil_comments_0.5':
         train_file = 'civil_train_0.5_finetune.csv'
+    elif args.train_dataset == 'civil_identites':
+        train_file = 'civil_identities_train_finetune.csv'
 
     df = pd.read_csv(os.path.join(args.data_dir, train_file), header=None, names=['text', 'label'])
 
