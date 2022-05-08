@@ -2,8 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 import argparse
-from sklearn.metrics import accuracy_score, f1_score, recall_score, roc_auc_score 
-
+from sklearn.metrics import roc_curve, accuracy_score, f1_score, recall_score, roc_auc_score 
+from sklearn.metrics import confusion_matrix
 
 def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', binary=True):
     """
@@ -31,13 +31,22 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
     avg_scores = scores.mean()
     f1 = f1_score(y_true = labels, y_pred = predictions, average=f1_avg)
     
-    auc_roc = roc_auc_score(labels, scores)
-    
+    try:
+        auc_roc = roc_auc_score(labels, scores)
+    except:
+        auc_roc = np.nan
+
+    cm = confusion_matrix(labels, predictions, labels=[0, 1])
+    tn, fp, fn, tp = confusion_matrix(list(labels), list(predictions), labels=[0, 1]).ravel()
+    tot = tn+tp+fp+fn
+    #print('False Positive Rate', fp/tot, recall_pos)
+
     metrics  = {'avg-scores': avg_scores,
                 'predicted-prevalence': predicted_prevalence,
                 'f1': f1,
                 'auc-roc': auc_roc,
-                'fpr': recall_pos,  # FPR
+                'fpr': fp/tot,  # FPR
+                'recall_pos': recall_pos
                }
     #return [acc,f1, 1-recall_neg] Need to understand why they do 1- recall_neg before adding it
     return metrics
