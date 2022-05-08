@@ -90,14 +90,18 @@ def main():
                     required=False,
                     help="Metrics out put file name")
     
+    parser.add_argument("--pAPI",
+                    default=False,
+                    type=str,
+                    required=False,
+                    help="modifications for pAPI")
+
     args = parser.parse_args()
 
 
     df = pd.read_csv(os.path.join(args.data_dir, args.results_csv))
-    if args.pred_name:
-        pred_name = args.pred_name
-    else:
-        pred_name = 'predictions'
+    pred_name = args.pred_name
+    if args.pAPI: 
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
 
     metrics = get_scores(df, args.label_name, pred_name, args.score_name)
@@ -105,7 +109,7 @@ def main():
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
-        if not args.pred_name:
+        if args.pAPI:
             output_name = args.results_csv[:-4] + '_basic_metrics.txt'
         else: 
             datasets = ['founta','civil_comments','civil_comments_0.5']
@@ -123,7 +127,8 @@ def main():
     # with open(os.path.join(args.data_dir, file_name), 'w') as f: 
     #     for key, value in metrics.items(): 
     #         f.write('%s:%s\n' % (key, value))
-    metrics_df = pd.DataFrame(metrics)
+    
+    metrics_df = pd.DataFrame.from_dict([metrics])
     print(metrics_df)
     metrics_df.to_csv(output_path)
 
