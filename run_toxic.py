@@ -219,7 +219,7 @@ def train(args, train_dataset, model, tokenizer):
     if args.mode == "none":
         loss_fn = clf_loss_functions.Plain()
     elif args.mode == "distill":
-        loss_fn = clf_loss_functions.DistillLoss(total_steps = t_total)
+        loss_fn = clf_loss_functions.DistillLoss()
     elif args.mode == 'distill_annealed':
         loss_fn = clf_loss_functions.DistillLossAnnealed(total_steps = t_total)
     elif args.mode == "smoothed_distill":
@@ -338,7 +338,13 @@ def train(args, train_dataset, model, tokenizer):
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
                     #model_acc = current_acc
-                    output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(101))
+                    if str.find(args.teacher_dataset, "0.005")>-1:
+                        ckpt_samp = 0.005
+                    elif str.find(args.teacher_dataset, "0.01")>-1:
+                        ckpt_samp = 0.01
+                    else:
+                        ckpt_samp = 101
+                    output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(ckpt_samp))
                     # Output_dir = args
                     if not os.path.exists(output_dir):
                         os.makedirs(output_dir)
