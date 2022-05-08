@@ -103,6 +103,12 @@ def main():
     pred_name = args.pred_name
     if args.pAPI: 
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
+    
+    if args.label_name == "binary_toxicity":
+        pred_name = 'predictions'
+        df = df[~df['male'].isnull()]
+        df[pred_name] = (df[args.score_name] > .5).astype(int).values
+        df[args.label_name] = (df['toxicity'] > .5).astype(int).values
 
     metrics = get_scores(df, args.label_name, pred_name, args.score_name)
 
