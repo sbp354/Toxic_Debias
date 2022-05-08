@@ -102,7 +102,13 @@ def main():
 
 
     df = pd.read_csv(os.path.join(args.data_dir, args.results_csv))
-    metrics = get_scores(df, args.label_name, args.pred_name, args.score_name)
+    if args.pred_name:
+        pred_name = args.pred_name
+    else:
+        pred_name = 'predictions'
+        df[pred_name] = (df[args.score_name] > .5).astype(int).values
+
+    metrics = get_scores(df, args.label_name, pred_name, args.score_name)
 
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
