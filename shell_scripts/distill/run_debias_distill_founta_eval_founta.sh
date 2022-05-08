@@ -15,7 +15,7 @@ python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \
-  --evaluate_during_training \
+  --no-do_evaluate_during_training \
   --save_steps 1000 \
   --logging_steps 1000 \
   --overwrite_output_dir \

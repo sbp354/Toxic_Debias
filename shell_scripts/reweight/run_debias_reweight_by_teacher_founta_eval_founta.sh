@@ -1,9 +1,9 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=debias
-export TRAIN_DATASET=founta/founta_train_shallow_remainder_random_0.005_seed42.csv
+export TRAIN_DATASET=founta/founta_train_shallow_remainder_random_0.01_seed42.csv
 export TEACHER_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta/xlm-mlm-en-2048
-export TEACHER_DATASET=finetune_founta/founta_train_shallow_remainder_random_0.005_seed42.csv_results.csv
+export TEACHER_DATASET=finetune_founta/founta_train_shallow_remainder_random_0.01_seed42.csv
 export DEV_DATASET=founta
 export LOSS=reweight_by_teacher
 
@@ -15,7 +15,7 @@ python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \
-  --evaluate_during_training \
+  --no-do_evaluate_during_training \
   --save_steps 1000 \
   --logging_steps 1000 \
   --overwrite_output_dir \
