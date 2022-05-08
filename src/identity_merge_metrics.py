@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 
 from sklearn.metrics import accuracy_score, f1_score, recall_score, roc_auc_score
-
+from sklearn.metrics import confusion_matrix
 
 
 def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', binary=True):
@@ -38,12 +38,17 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
     except:
         auc_roc = np.nan
     
+    cm = confusion_matrix(labels, predictions, labels=[0, 1])
+    tn, fp, fn, tp = confusion_matrix(list(labels), list(predictions), labels=[0, 1]).ravel()
+    tot = tn+tp+fp+fn
+
     metrics  = {'metrics_condition' : '',
                 'avg-scores': avg_scores,
                 'predicted-prevalence': predicted_prevalence,
                 'f1': f1,
                 'auc-roc': auc_roc,
-                'fpr': recall_pos,  # FPR
+                'fpr': fp/tot, # FPR
+                'recall_pos': recall_pos
                }
     return metrics
 
