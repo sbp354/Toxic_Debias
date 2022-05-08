@@ -338,10 +338,13 @@ def train(args, train_dataset, model, tokenizer):
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
                     #model_acc = current_acc
-                    if str.find(args.teacher_dataset, "0.005")>-1:
-                        ckpt_samp = 0.005
-                    elif str.find(args.teacher_dataset, "0.01")>-1:
-                        ckpt_samp = 0.01
+                    if args.teacher_dataset:
+                        if str.find(args.teacher_dataset, "0.005")>-1:
+                            ckpt_samp = 0.005
+                        elif str.find(args.teacher_dataset, "0.01")>-1:
+                            ckpt_samp = 0.01
+                        else:
+                            ckpt_samp = 101
                     else:
                         ckpt_samp = 101
                     output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(ckpt_samp))
