@@ -1,16 +1,13 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=Toxic
-export TRAIN_DATASET=civil_comments_0.5
-export DEV_DATASET=civil_comments_0.5
+export TRAIN_DATASET=founta
+export DEV_DATASET=founta
+export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
 
-export DATA=$1
-export RAN=$2
-export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/civil_comments_0.5
-
-python ../DSGA1012/Final_Project/git/Toxic_Debias/run_toxic.py \
-  --model_type roberta \
-  --model_name_or_path roberta-large \
+python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
+  --model_type xlm \
+  --model_name_or_path xlm-mlm-en-2048 \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \

@@ -25,8 +25,6 @@ def save_csvs(args,df_shallow, df_remainder):
     df_shallow.to_csv(output_path,
                             index = True,
                             index_label = 'ind')
-    
-    
     df_remainder.to_csv(os.path.join(args.output_dir, args.train_dataset + '_train_shallow_remainder_' + fm + '.csv'),
                         index = True,
                         index_label = 'ind')
@@ -37,6 +35,8 @@ def random_perc(args):
         train_file = 'founta_train_finetune.csv'
     elif args.train_dataset == 'civil_comments_0.5':
         train_file = 'civil_train_0.5_finetune.csv'
+    elif args.train_dataset == 'civil_identites':
+        train_file = 'civil_identities_train_finetune.csv'
 
     df = pd.read_csv(os.path.join(args.data_dir, train_file), header=None, names=['text', 'label'])
 
@@ -82,7 +82,6 @@ def main():
                         choices=["random", "balanced"],
                         help = "Different subsampling methods",
                         default="random")
-
     parser.add_argument("--sample_percent", 
                         type = float,
                         help = "Percentage to sample",

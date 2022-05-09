@@ -1,5 +1,5 @@
 #!/bin/bash
-export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data/founta
+export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data/civil_comments_0.5
 export TRAIN_DATASET=founta
 export MODE=random
 export PERCENT=.005
