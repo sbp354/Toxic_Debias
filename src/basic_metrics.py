@@ -57,7 +57,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--data_dir",
+        "--model_dir",
         default=None,
         type=str,
         required=True,
@@ -108,9 +108,9 @@ def main():
     args = parser.parse_args()
 
 
-    df = pd.read_csv(os.path.join(args.data_dir, args.results_csv))
+    df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
     pred_name = args.pred_name
-    if args.pAPI: 
+    if args.pAPI == True: 
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
     
     if args.label_name == "binary_toxicity":
@@ -118,23 +118,28 @@ def main():
         df = df[~df['male'].isnull()]
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
         df[args.label_name] = (df['toxicity'] > .5).astype(int).values
-
-    metrics = get_scores(df, args.label_name, pred_name, args.score_name)
+    
+    if args.pAPI == "False":
+        print("Hello")
+        df['proba'] = np.where(df[pred_name]==1, df[args.score_name],1- df[args.score_name])
+        metrics = get_scores(df, args.label_name, pred_name, 'proba')
+    else:
+        metrics = get_scores(df, args.label_name, pred_name, args.score_name)
 
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
-        if args.pAPI:
-            output_name = args.results_csv[:-4] + '_basic_metrics.txt'
+        if args.pAPI == True:
+            output_name = args.results_csv[:-4] + '_basic_metrics.csv'
         else: 
             datasets = ['founta','civil_comments','civil_comments_0.5']
             struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
             model = struct[-2]
             loss = struct[-1]
             if model in datasets:
-                output_name = loss + args.results_csv[:-4]  # If no custom loss function then model name is here
+                output_name = loss + args.results_csv[:-4] + '_basic_metrics.csv' # If no custom loss function then model name is here
             else:
-                output_name = model + loss + args.results_csv[:-4]
+                output_name = model + loss + args.results_csv[:-4] + '_basic_metrics.csv'
 
         output_path = os.path.join(args.output_dir,output_name)
 
