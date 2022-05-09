@@ -322,7 +322,8 @@ def train(args, train_dataset, model, tokenizer):
                         for key, value in results.items():
                             eval_key = "eval_{}".format(key)
                             logs[eval_key] = value
-
+		    else:
+			logs["eval_acc"] = 0
                     loss_scalar = (tr_loss - logging_loss) / args.logging_steps
                     learning_rate_scalar = scheduler.get_lr()[0]
                     logs["learning_rate"] = learning_rate_scalar
@@ -332,12 +333,13 @@ def train(args, train_dataset, model, tokenizer):
                     for key, value in logs.items():
                         tb_writer.add_scalar(key, value, global_step)
                     print(json.dumps({**logs, **{"step": global_step}}), flush=True)
-                    #current_acc = logs["eval_acc"]
+                    current_acc = logs["eval_acc"]
+		
 
-                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
+                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0 and current_acc >= model_acc:
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
-                    #model_acc = current_acc
+                    model_acc = current_acc
                     if args.task_name == "shallow":
                         if str.find(args.train_dataset, "0.005")>-1:
                             ckpt_samp = 'shallow-0.005'
@@ -354,6 +356,7 @@ def train(args, train_dataset, model, tokenizer):
                             ckpt_samp = 101
                     else:
                         ckpt_samp = 101
+                    
                     output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(ckpt_samp))
                     # Output_dir = args
                     if not os.path.exists(output_dir):
@@ -366,6 +369,7 @@ def train(args, train_dataset, model, tokenizer):
 
                     torch.save(args, os.path.join(output_dir, "training_args.bin"))
                     logger.info("Saving model checkpoint to %s", output_dir)
+                    print("Saving model checkpoint to %s", output_dir)
 
                     torch.save(optimizer.state_dict(), os.path.join(output_dir, "optimizer.pt"))
                     torch.save(scheduler.state_dict(), os.path.join(output_dir, "scheduler.pt"))
@@ -424,8 +428,11 @@ def evaluate(args, model, tokenizer, prefix=""):
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                     )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
                 outputs = model(**inputs)
+                print("tmp_eval_loss", outputs[0])
+                print("logits", outputs[1])
                 tmp_eval_loss, logits = outputs[:2]
                 probas = F.softmax(logits, dim=-1)
+                print("probas", probas)
 
                 eval_loss += tmp_eval_loss.mean().item()
             nb_eval_steps += 1
@@ -478,7 +485,7 @@ def evaluate(args, model, tokenizer, prefix=""):
             output_eval_file = os.path.join(eval_output_dir, prefix, args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
         else:
             if args.task_name == "shallow":
-                output_eval_file = os.path.join(eval_output_dir, prefix, "finetune_"+args.eval_data_dir.split('/')[-1][:-4]+"_eval_results.txt")
+                output_eval_file = os.path.join(eval_output_dir, prefix, "finetune_"+args.dev_dataset.split('/')[-1][:-4]+"_eval_results.txt")
             else: 
                 if args.mode == 'none':
                     output_eval_file = os.path.join(eval_output_dir, prefix, "finetune_"+args.train_dataset.split("/")[-1][:-4]+"_challenge_"+args.dev_dataset+"_eval_results.txt")
@@ -945,9 +952,17 @@ def main():
     results = {}
     if args.do_eval and args.local_rank in [-1, 0]:
         if args.model_type == 'roberta' or args.model_type == 'xlm':
-            tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-            checkpoints = [args.output_dir]
-            print(f"Loading tokenizer from {args.output_dir}")
+            if args.teacher_dataset == None:
+                ckpt_dir = os.path.join(args.output_dir, 'checkpoint-101')
+            else:
+                if str.find(args.teacher_dataset, "0.005")>-1:
+                    ckpt_dir = os.path.join(args.output_dir, 'checkpoint-0.005')
+                elif str.find(args.teacher_dataset, "0.01")>-1:
+                    ckpt_dir = os.path.join(args.output_dir, 'checkpoint-0.01')
+
+            tokenizer = tokenizer_class.from_pretrained(ckpt_dir, do_lower_case=args.do_lower_case)
+            checkpoints = [ckpt_dir]
+            print(f"Loading tokenizer from {checkpoints[0]}")
         else:
             tokenizer = tokenizer_class.from_pretrained(os.path.join(args.output_dir, 'checkpoint-101'), do_lower_case=args.do_lower_case)
             checkpoints = [os.path.join(args.output_dir, 'checkpoint-101')]
