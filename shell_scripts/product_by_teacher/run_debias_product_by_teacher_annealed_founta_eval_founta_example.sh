@@ -1,9 +1,9 @@
 #!/bin/bash
 export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
 export TASK_NAME=debias
-export TRAIN_DATASET=founta/founta_train_shallow_remainder_random_0.01_seed42.csv
+export TRAIN_DATASET=founta/founta_train_shallow_remainder_random_0.005_seed42.csv
 export TEACHER_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta/xlm-mlm-en-2048
-export TEACHER_DATASET=finetune_founta/founta_train_shallow_remainder_random_0.01_seed42.csv_results.csv
+export TEACHER_DATASET=finetune_founta/founta_train_shallow_remainder_random_0.005_seed42.csv_results.csv
 export DEV_DATASET=founta
 export LOSS=bias_product_by_teacher_annealed
 
