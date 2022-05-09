@@ -332,18 +332,29 @@ def train(args, train_dataset, model, tokenizer):
                     for key, value in logs.items():
                         tb_writer.add_scalar(key, value, global_step)
                     print(json.dumps({**logs, **{"step": global_step}}), flush=True)
-                    #current_acc = logs["eval_acc"]
+                    current_acc = logs["eval_acc"]
 
-                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0:
+                if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0 and current_acc > model_acc:
                     # Save model checkpoint
                     # Only save the best performing model on the dev dataset
-                    #model_acc = current_acc
-                    if str.find(args.teacher_dataset, "0.005")>-1:
-                        ckpt_samp = 0.005
-                    elif str.find(args.teacher_dataset, "0.01")>-1:
-                        ckpt_samp = 0.01
+                    model_acc = current_acc
+                    if args.task_name == "shallow":
+                        if str.find(args.train_dataset, "0.005")>-1:
+                            ckpt_samp = 'shallow-0.005'
+                        elif str.find(args.train_dataset, "0.01")>-1:
+                            ckpt_samp = 'shallow-0.01'
+                        else:
+                            ckpt_sampe = 'shallow'
+                    elif args.teacher_dataset:
+                        if str.find(args.teacher_dataset, "0.005")>-1:
+                            ckpt_samp = 0.005
+                        elif str.find(args.teacher_dataset, "0.01")>-1:
+                            ckpt_samp = 0.01
+                        else:
+                            ckpt_samp = 101
                     else:
                         ckpt_samp = 101
+                    
                     output_dir = os.path.join(args.output_dir, "checkpoint-{}".format(ckpt_samp))
                     # Output_dir = args
                     if not os.path.exists(output_dir):
@@ -414,8 +425,11 @@ def evaluate(args, model, tokenizer, prefix=""):
                         batch[2] if args.model_type in ["bert", "xlnet", "albert"] else None
                     )  # XLM, DistilBERT, RoBERTa, and XLM-RoBERTa don't use segment_ids
                 outputs = model(**inputs)
+                print("tmp_eval_loss", outputs[0])
+                print("logits", outputs[1])
                 tmp_eval_loss, logits = outputs[:2]
                 probas = F.softmax(logits, dim=-1)
+                print("probas", probas)
 
                 eval_loss += tmp_eval_loss.mean().item()
             nb_eval_steps += 1
@@ -936,8 +950,11 @@ def main():
     if args.do_eval and args.local_rank in [-1, 0]:
         if args.model_type == 'roberta' or args.model_type == 'xlm':
             tokenizer = tokenizer_class.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-            checkpoints = [args.output_dir]
-            print(f"Loading tokenizer from {args.output_dir}")
+            if str.find(args.teacher_dataset, "0.005")>-1:
+                checkpoints = [os.path.join(args.output_dir, 'checkpoint-0.005')]
+            elif str.find(args.teacher_dataset, "0.01")>-1:
+                checkpoints = [os.path.join(args.output_dir, 'checkpoint-0.01')]
+            print(f"Loading tokenizer from {checkpoints[0]}")
         else:
             tokenizer = tokenizer_class.from_pretrained(os.path.join(args.output_dir, 'checkpoint-101'), do_lower_case=args.do_lower_case)
             checkpoints = [os.path.join(args.output_dir, 'checkpoint-101')]

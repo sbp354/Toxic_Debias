@@ -76,7 +76,7 @@ class DistillLossAnnealed(ClfLossFunction):
         super().__init__()
         self.max_theta = max_theta
         self.min_theta = min_theta
-        self.num_train_optimization_steps = total_steps
+        self.num_train_optimization_steps = int(total_steps)
         self.num_epochs = num_epochs
         self.current_step = 0
 
@@ -189,7 +189,7 @@ class ReweightByTeacherAnnealed(ClfLossFunction):
         super().__init__()
         self.max_theta = max_theta
         self.min_theta = min_theta
-        self.num_train_optimization_steps = total_steps
+        self.num_train_optimization_steps = int(total_steps)
         self.num_epochs = num_epochs
         self.current_step = 0
 
