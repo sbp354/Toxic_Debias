@@ -5,7 +5,7 @@ import argparse
 from sklearn.metrics import roc_curve, accuracy_score, f1_score, recall_score, roc_auc_score 
 from sklearn.metrics import confusion_matrix
 
-def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', binary=True):
+def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', proba_name='proba' binary=True):
     """
     calculate relevant statistics for measuring bias.
     
@@ -21,6 +21,7 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
     labels = df[label_name]
     predictions = df[pred_name]
     scores = df[score_name]
+    proba = df[proba_name]
     
     if binary:
         f1_avg = 'binary'
@@ -28,11 +29,11 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
         #recall_neg = recall_score(labels, predictions, pos_label=0) # Not sure about this 
         
     predicted_prevalence = predictions.mean()
-    avg_scores = scores.mean()
+    avg_scores = predictions.mean()
     f1 = f1_score(y_true = labels, y_pred = predictions, average=f1_avg)
     
     try:
-        auc_roc = roc_auc_score(labels, scores)
+        auc_roc = roc_auc_score(labels, proba)
     except:
         auc_roc = np.nan
 
@@ -120,11 +121,10 @@ def main():
         df[args.label_name] = (df['toxicity'] > .5).astype(int).values
     
     if args.pAPI == "False":
-        print("Hello")
         df['proba'] = np.where(df[pred_name]==1, df[args.score_name],1- df[args.score_name])
-        metrics = get_scores(df, args.label_name, pred_name, 'proba')
+        metrics = get_scores(df, args.label_name, pred_name, args.score_name, 'proba')
     else:
-        metrics = get_scores(df, args.label_name, pred_name, args.score_name)
+        metrics = get_scores(df, args.label_name, pred_name, args.score_name, 'proba')
 
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
