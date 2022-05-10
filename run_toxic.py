@@ -323,17 +323,17 @@ def train(args, train_dataset, model, tokenizer):
                             eval_key = "eval_{}".format(key)
                             logs[eval_key] = value
                     else:
-            logs["eval_acc"] = 0
-                    loss_scalar = (tr_loss - logging_loss) / args.logging_steps
-                    learning_rate_scalar = scheduler.get_lr()[0]
-                    logs["learning_rate"] = learning_rate_scalar
-                    logs["loss"] = loss_scalar
-                    logging_loss = tr_loss
+                        logs["eval_acc"] = 0
+                        loss_scalar = (tr_loss - logging_loss) / args.logging_steps
+                        learning_rate_scalar = scheduler.get_lr()[0]
+                        logs["learning_rate"] = learning_rate_scalar
+                        logs["loss"] = loss_scalar
+                        logging_loss = tr_loss
 
-                    for key, value in logs.items():
-                        tb_writer.add_scalar(key, value, global_step)
-                    print(json.dumps({**logs, **{"step": global_step}}), flush=True)
-                    current_acc = logs["eval_acc"]
+                        for key, value in logs.items():
+                            tb_writer.add_scalar(key, value, global_step)
+                        print(json.dumps({**logs, **{"step": global_step}}), flush=True)
+                        current_acc = logs["eval_acc"]
         
 
                 if args.local_rank in [-1, 0] and args.save_steps > 0 and global_step % args.save_steps == 0 and current_acc >= model_acc:
