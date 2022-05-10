@@ -162,9 +162,9 @@ def main():
 
     if args.label_name == "binary_toxicity":
         pred_name = 'predictions'
-        df = df[~df['male'].isnull()]
-        df[pred_name] = (df[args.score_name] > .5).astype(int).values
-        df[args.label_name] = (df['toxicity'] > .5).astype(int).values
+        results_df = results_df[~results_df['male'].isnull()]
+        results_df[pred_name] = (results_df[args.score_name] > .5).astype(int).values
+        results_df[args.label_name] = (results_df['toxicity'] > .5).astype(int).values
 
     identities_df =  pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
     merged_df = pd.concat([results_df, identities_df],axis=1)
@@ -192,25 +192,26 @@ def main():
     metrics_dict_list = []
     print('Calculating Aggretage Metrics...')
     if args.pAPI == "False":
-        df['proba'] = np.where(df[args.pred_name]==1, df[args.score_name],1- df[args.score_name])
-        metrics = get_scores(df, args.label_name, args.pred_name, args.score_name,'proba')
+        results_df['proba'] = np.where(results_df[args.pred_name]==1, results_df[args.score_name],1- results_df[args.score_name])
+        metrics = get_scores(results_df, args.label_name, args.pred_name, args.score_name,'proba')
     else:
-        df['score'] = np.where(df[args.pred_name]==1, df[args.score_name], 1- df[args.score_name])
-        metrics = get_scores(df, args.label_name, args.pred_name, 'score', args.score_name) # Because we get proba as defual so its swapped here
+        results_df['score'] = np.where(results_df[args.pred_name]==1, results_df[args.score_name], 1- results_df[args.score_name])
+        metrics = get_scores(results_df, args.label_name, args.pred_name, 'score', args.score_name) # Because we get proba as defual so its swapped here
     #metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
     metrics['metrics_condition'] = 'none'
     metrics_dict_list.append(metrics)
     # print(metrics)
     
     for identity in identities_list:
+        if args.pAPI == "False":
             print('Calculating {} = 1 Metrics...'.format(identity))
-            metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name, args.score_name)
+            metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name, args.score_name,'proba')
             metrics['metrics_condition'] = '{}_1'.format(identity)
             metrics_dict_list.append(metrics)
             # print(metrics)
 
             print('Calculating {} = 0 Metrics...'.format(identity))
-            metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, args.score_name)
+            metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, args.score_name, 'proba')
             metrics['metrics_condition'] = '{}_0'.format(identity)
             metrics_dict_list.append(metrics)
             # print(metrics)
