@@ -7,7 +7,7 @@ from sklearn.metrics import accuracy_score, f1_score, recall_score, roc_auc_scor
 from sklearn.metrics import confusion_matrix
 
 
-def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', binary=True):
+def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', proba_name='proba', binary=True):
     """
     calculate relevant statistics for measuring bias.
     
@@ -15,14 +15,13 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
     Depending on the dataset df should also have associations of identity 
     related to the id which will be tied to the original index 'Unnamed: 0'
     
-    
     binary: boolean for if its only binary toxicity
     """
-    
     
     labels = df[label_name]
     predictions = df[pred_name]
     scores = df[score_name]
+    proba = df[proba_name]
     
     if binary:
         f1_avg = 'binary'
@@ -34,7 +33,7 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
     f1 = f1_score(y_true = labels, y_pred = predictions, average=f1_avg)
     
     try:
-        auc_roc = roc_auc_score(labels, scores)
+        auc_roc = roc_auc_score(labels, proba)
     except:
         auc_roc = np.nan
     
@@ -81,7 +80,7 @@ def main():
                     help="Output of a model with predictions, scores, true label on an eval dataset",)
     
     parser.add_argument("--output_dir",
-                    default="/scratch/sbp354/DSGA1012/Final_Project/models/results",
+                    default="/scratch/sbp354/DSGA1012/Final_Project/models/merged_results",
                     type=str,
                     required=False,
                     help="metrics out put file name")
@@ -91,6 +90,13 @@ def main():
                     type=str,
                     required=False,
                     help="metrics out put file name")
+
+
+    parser.add_argument("--output_suffix",
+                    default='merged_metrics.csv',
+                    type=str,
+                    required=False,
+                    help="suffix to append to each file name.")
 
     parser.add_argument("--label_name", 
                     help = "The column name for the ground truth",
@@ -111,29 +117,56 @@ def main():
                     help = "list describing columns with hot encoded identities to merge and conduct metrics on",
                     type = str,
                     required=False,
-                    default="race")                    
+                    default="race")  
+
+    parser.add_argument("--pAPI",
+                    default=False,
+                    type=str,
+                    required=False,
+                    help="modifications for pAPI")                  
     
     args = parser.parse_args()
 
     identities_list = args.identities_list.split(',')
+    eval_dataset = ' '.join(args.identities_dir.split('/')).split()[-1]
+
+    struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+    print(struct)
+    finetune_dataset = struct[-3].split('_')[0]
 
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
         datasets = ['founta','civil_comments','civil_comments_0.5']
-        struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+        # struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+        # print(struct)
+        # finetune_dataset = struct[0].split('_')[0]
         model = struct[-2]
         loss = struct[-1]
         if model in datasets:
             output_name = loss + args.results_csv[:-4]  # If no custom loss function then model name is here
         else:
-            output_name = model + loss + args.results_csv[:-4]
+            output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix)
         output_path =  os.path.join(args.output_dir,output_name)
+    
+    print(output_name)
+    print(output_path)
+
 
 
     results_df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
-    identities_df =  pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
 
+    if args.pAPI == True: 
+        pred_name = args.pred_name
+        results_df[pred_name] = (results_df[args.score_name] > .5).astype(int).values
+
+    if args.label_name == "binary_toxicity":
+        pred_name = 'predictions'
+        df = df[~df['male'].isnull()]
+        df[pred_name] = (df[args.score_name] > .5).astype(int).values
+        df[args.label_name] = (df['toxicity'] > .5).astype(int).values
+
+    identities_df =  pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
     merged_df = pd.concat([results_df, identities_df],axis=1)
     # Civil identites requires binarization from floats and filtering
     if args.identities_csv == "civil_test.csv":
@@ -158,25 +191,39 @@ def main():
     merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
     metrics_dict_list = []
     print('Calculating Aggretage Metrics...')
-    metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
+    if args.pAPI == "False":
+        df['proba'] = np.where(df[args.pred_name]==1, df[args.score_name],1- df[args.score_name])
+        metrics = get_scores(df, args.label_name, args.pred_name, args.score_name,'proba')
+    else:
+        df['score'] = np.where(df[args.pred_name]==1, df[args.score_name], 1- df[args.score_name])
+        metrics = get_scores(df, args.label_name, args.pred_name, 'score', args.score_name) # Because we get proba as defual so its swapped here
+    #metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
     metrics['metrics_condition'] = 'none'
     metrics_dict_list.append(metrics)
-    print(metrics)
+    # print(metrics)
     
     for identity in identities_list:
             print('Calculating {} = 1 Metrics...'.format(identity))
             metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name, args.score_name)
             metrics['metrics_condition'] = '{}_1'.format(identity)
             metrics_dict_list.append(metrics)
-            print(metrics)
+            # print(metrics)
 
             print('Calculating {} = 0 Metrics...'.format(identity))
             metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, args.score_name)
             metrics['metrics_condition'] = '{}_0'.format(identity)
             metrics_dict_list.append(metrics)
-            print(metrics)
+            # print(metrics)
                         
     metrics_df = pd.DataFrame(metrics_dict_list)
+    metrics_df['model'] = model
+    metrics_df['loss'] = loss
+    metrics_df['fine_tune_data'] = finetune_dataset
+    metrics['eval_data'] = eval_dataset
+    
+    
+    # print(results_df)
+    # print(metrics_df)
     print(metrics_df)
     metrics_df.to_csv(output_path)
 
