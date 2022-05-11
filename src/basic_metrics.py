@@ -5,7 +5,7 @@ import argparse
 from sklearn.metrics import roc_curve, accuracy_score, f1_score, recall_score, roc_auc_score 
 from sklearn.metrics import confusion_matrix
 
-def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', proba_name='proba' binary=True):
+def get_scores(df, label_name='true_labels', pred_name='predictions', score_name='scores', proba_name='proba', binary=True):
     """
     calculate relevant statistics for measuring bias.
     
@@ -29,7 +29,7 @@ def get_scores(df, label_name='true_labels', pred_name='predictions', score_name
         #recall_neg = recall_score(labels, predictions, pos_label=0) # Not sure about this 
         
     predicted_prevalence = predictions.mean()
-    avg_scores = predictions.mean()
+    avg_scores = scores.mean()
     f1 = f1_score(y_true = labels, y_pred = predictions, average=f1_avg)
     
     try:

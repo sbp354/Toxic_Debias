@@ -120,7 +120,7 @@ def main():
                     default="race")  
 
     parser.add_argument("--pAPI",
-                    default=False,
+                    default="False",
                     type=str,
                     required=False,
                     help="modifications for pAPI")                  
@@ -137,7 +137,7 @@ def main():
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
-        datasets = ['founta','civil_comments','civil_comments_0.5']
+        datasets = ['founta','civil_comments','civil_comments_0.5', 'civil_identities']
         # struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
         # print(struct)
         # finetune_dataset = struct[0].split('_')[0]
@@ -152,11 +152,9 @@ def main():
     print(output_name)
     print(output_path)
 
-
-
     results_df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
-
-    if args.pAPI == True: 
+    
+    if args.pAPI == "True": 
         pred_name = args.pred_name
         results_df[pred_name] = (results_df[args.score_name] > .5).astype(int).values
 
@@ -170,8 +168,7 @@ def main():
     merged_df = pd.concat([results_df, identities_df],axis=1)
     # Civil identites requires binarization from floats and filtering
     if args.identities_csv == "civil_test.csv":
-        identities_m1 = identities_df.iloc[1: , :]
-        identities_m1.reset_index().drop(['index'],axis=1,inplace=True)
+        identities_df = identities_df[~identities_df['male'].isnull()].reset_index()
         merged_df = pd.concat([results_df, identities_df],axis=1)
         df_civil_test_full = merged_df#pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
         df_civil_identities = df_civil_test_full[
@@ -183,25 +180,28 @@ def main():
         identities = df_civil_identities[
             ~(df_civil_identities.male == df_civil_identities.female) | 
             ~(df_civil_identities.white == df_civil_identities.black)]
-        identities['is_female'] = np.where(identities.male > identities.female, 1.0, 0.0)
+        identities['is_female'] = np.where(identities.female > identities.male, 1.0, 0.0)
         identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
         identities_list = ['is_female', 'black']
         merged_df = identities
+        print(sum(merged_df.is_female))
 
     merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
     metrics_dict_list = []
     print('Calculating Aggretage Metrics...')
     if args.pAPI == "False":
-        results_df['proba'] = np.where(results_df[args.pred_name]==1, results_df[args.score_name],1- results_df[args.score_name])
-        metrics = get_scores(results_df, args.label_name, args.pred_name, args.score_name,'proba')
+        print("hello")
+        merged_df['proba'] = np.where(merged_df[args.pred_name]==1, merged_df[args.score_name],1- merged_df[args.score_name])
+        metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name,'proba')
     else:
-        results_df['score'] = np.where(results_df[args.pred_name]==1, results_df[args.score_name], 1- results_df[args.score_name])
-        metrics = get_scores(results_df, args.label_name, args.pred_name, 'score', args.score_name) # Because we get proba as defual so its swapped here
-    #metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
+        merged_df['scores'] = np.where(merged_df[args.pred_name]==1, merged_df[args.score_name], 1- merged_df[args.score_name])
+        metrics = get_scores(merged_df, args.label_name, args.pred_name, 'scores', args.score_name) # Because we get proba as defual so its swapped here
+    metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
     metrics['metrics_condition'] = 'none'
     metrics_dict_list.append(metrics)
-    # print(metrics)
-    
+    #print(metrics)
+    #print(merged_df.head(5))
+
     for identity in identities_list:
         if args.pAPI == "False":
             print('Calculating {} = 1 Metrics...'.format(identity))
@@ -209,7 +209,7 @@ def main():
             metrics['metrics_condition'] = '{}_1'.format(identity)
             metrics_dict_list.append(metrics)
             # print(metrics)
-
+    
             print('Calculating {} = 0 Metrics...'.format(identity))
             metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, args.score_name, 'proba')
             metrics['metrics_condition'] = '{}_0'.format(identity)
@@ -223,8 +223,8 @@ def main():
     metrics['eval_data'] = eval_dataset
     
     
-    # print(results_df)
-    # print(metrics_df)
+    #print(results_df)
+    #print(metrics_df)
     print(metrics_df)
     metrics_df.to_csv(output_path)
 
