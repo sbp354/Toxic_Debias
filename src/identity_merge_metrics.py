@@ -136,6 +136,13 @@ def main():
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
+        if args.results_csv == "PAPI_challenge_civil_results.csv":
+            output_name = args.results_csv[:-4] + args.output_suffix
+            output_path = os.path.join(args.output_dir,output_name)
+            model = "pAPI"
+            loss = "N/A"
+            finetune_dataset = "N/A"
+        else:
         datasets = ['founta','civil_comments','civil_comments_0.5', 'civil_identities']
         # struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
         # print(struct)
@@ -156,7 +163,8 @@ def main():
 
     results_df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
     
-    if args.results_csv == "PAPI_civil_test_evaluated.csv":
+    if args.results_csv == "PAPI_challenge_civil_results.csv":
+        results_df[args.pred_name] = (results_df[args.score_name] > .5).astype(int).values
         toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
         results_df['true_labels'] = results_df[toxic_labels].max(axis = 1)
         results_df['true_labels'] = np.where(results_df['true_labels']>.5, 1, 0)
