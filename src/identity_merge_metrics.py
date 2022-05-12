@@ -144,6 +144,9 @@ def main():
         model = struct[-2]
         loss = struct[-1]
         if model in datasets:
+            finetune_dataset = model
+            model = loss
+            loss = "plain"
             output_name = loss + args.results_csv[:-4]  # If no custom loss function then model name is here
         else:
             output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix)
