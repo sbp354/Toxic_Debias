@@ -131,7 +131,6 @@ def main():
     eval_dataset = ' '.join(args.identities_dir.split('/')).split()[-1]
 
     struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
-    print(struct)
     finetune_dataset = struct[-3].split('_')[0]
 
     if args.output_name:
@@ -147,7 +146,7 @@ def main():
             finetune_dataset = model
             model = loss
             loss = "plain"
-            output_name = loss + args.results_csv[:-4]  # If no custom loss function then model name is here
+            output_name = loss + args.results_csv[:-4] + args.output_suffix  # If no custom loss function then model name is here
         else:
             output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix)
         output_path =  os.path.join(args.output_dir,output_name)
@@ -183,7 +182,6 @@ def main():
         identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
         identities_list = ['is_female', 'black']
         merged_df = identities
-        print(sum(merged_df.is_female))
 
     merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
     metrics_dict_list = []

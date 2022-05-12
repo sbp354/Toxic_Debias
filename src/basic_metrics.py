@@ -121,7 +121,7 @@ def main():
     if args.pAPI == "True": 
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
     
-    if args.results_csv == "PAPI_challenge_civil_results.csv":
+    if args.results_csv == "PAPI_challenge_covert_results.csv":
         toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
         df['true_labels'] = df[toxic_labels].max(axis = 1)
         df['true_labels'] = np.where(df['true_labels']>.5, 1, 0)
@@ -163,6 +163,7 @@ def main():
     else:
         if args.pAPI == "True":
             output_name = args.results_csv[:-4] + '_basic_metrics.csv'
+            output_path = os.path.join(args.output_dir,output_name)
             model = "pAPI"
             loss = "N/A"
             finetune_dataset = "N/A"
@@ -180,7 +181,7 @@ def main():
                 output_name = loss + args.results_csv[:-4] + args.output_suffix  # If no custom loss function then model name is here
             else:
                 output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix)
-            output_path =  os.path.join(args.output_dir,output_name)
+                output_path =  os.path.join(args.output_dir,output_name)
     
     print(output_name)
     print(output_path)
