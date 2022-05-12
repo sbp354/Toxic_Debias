@@ -164,21 +164,25 @@ def main():
 
     results_df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
     
-    if args.results_csv == "PAPI_challenge_civil_results.csv":
-        results_df[args.pred_name] = (results_df[args.score_name] > .5).astype(int).values
-        toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
-        results_df['true_labels'] = results_df[toxic_labels].max(axis = 1)
-        results_df['true_labels'] = np.where(results_df['true_labels']>.5, 1, 0)
-        results_df = results_df[~results_df['male'].isnull()]#.reset_index()
-        #results_df = results_df.drop(['index' , 'Unnamed: 0'],axis=1)
-        print(results_df)
+    
     
     identities_df =  pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
     merged_df = pd.concat([results_df, identities_df],axis=1)
     # Civil identites requires binarization from floats and filtering
     if args.identities_csv == "civil_test.csv":
-        identities_df = identities_df[~identities_df['male'].isnull()].reset_index().drop(['index'],axis=1)
-        merged_df = pd.concat([results_df, identities_df],axis=1)
+        if args.results_csv == "PAPI_challenge_civil_results.csv":
+            merged_df = pd.concat([results_df, identities_df],axis=1)
+            print(merged_df)
+            # results_df[args.pred_name] = (results_df[args.score_name] > .5).astype(int).values
+            # toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
+            # results_df['true_labels'] = results_df[toxic_labels].max(axis = 1)
+            # results_df['true_labels'] = np.where(results_df['true_labels']>.5, 1, 0)
+            # results_df = results_df[~results_df['male'].isnull()]#.reset_index()
+            # #results_df = results_df.drop(['index' , 'Unnamed: 0'],axis=1)
+            # print(results_df)
+        else:
+            identities_df = identities_df[~identities_df['male'].isnull()].reset_index().drop(['index'],axis=1)
+            merged_df = pd.concat([results_df, identities_df],axis=1)
         #merged_df = merged_df.drop(['index', 'Unnamed: 0'],axis=1)
         df_civil_test_full = merged_df#pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
         ## df_civil_identities = df_civil_test_full[
