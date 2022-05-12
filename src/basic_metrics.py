@@ -110,38 +110,69 @@ def main():
 
 
     df = pd.read_csv(os.path.join(args.model_dir, args.results_csv))
+
+
     pred_name = args.pred_name
-    if args.pAPI == True: 
+    if args.pAPI == "True": 
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
     
-    if args.label_name == "binary_toxicity":
-        pred_name = 'predictions'
-        df = df[~df['male'].isnull()]
-        df[pred_name] = (df[args.score_name] > .5).astype(int).values
-        df[args.label_name] = (df['toxicity'] > .5).astype(int).values
+    if args.results_csv == "PAPI_civil_test_evaluated.csv":
+        toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
+        df['true_labels'] = df[toxic_labels].max(axis = 1)
+        df['true_labels'] = np.where(df['true_labels']>.5, 1, 0)
+    #     pred_name = 'predictions'
+    #     df = df[~df['male'].isnull()]
+    #     df[pred_name] = (df[args.score_name] > .5).astype(int).values
+    #     df[args.label_name] = (df['toxicity'] > .5).astype(int).values
     
     if args.pAPI == "False":
         df['proba'] = np.where(df[pred_name]==1, df[args.score_name],1- df[args.score_name])
         metrics = get_scores(df, args.label_name, pred_name, args.score_name, 'proba')
     else:
-        metrics = get_scores(df, args.label_name, pred_name, args.score_name, 'proba')
+        df['scores'] =  np.where(df[pred_name]==1, df[args.score_name],1- df[args.score_name])
+        metrics = get_scores(df, args.label_name, pred_name, 'scores', args.score_name)
+
+    # if args.output_name:
+    #     output_path =  os.path.join(args.output_dir,args.output_name)
+    # else:
+    #     if args.pAPI == True:
+    #         output_name = args.results_csv[:-4] + '_basic_metrics.csv'
+    #     else: 
+    #         datasets = ['founta','civil_comments','civil_comments_0.5']
+    #         struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+    #         model = struct[-2]
+    #         loss = struct[-1]
+    #         if model in datasets:
+    #             output_name = loss + args.results_csv[:-4] + '_basic_metrics.csv' # If no custom loss function then model name is here
+    #         else:
+    #             output_name = model + loss + args.results_csv[:-4] + '_basic_metrics.csv'
+
+    #     output_path = os.path.join(args.output_dir,output_name)
+
+    struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+    print(struct)
+    finetune_dataset = struct[-3].split('_')[0]
 
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
         if args.pAPI == True:
             output_name = args.results_csv[:-4] + '_basic_metrics.csv'
-        else: 
-            datasets = ['founta','civil_comments','civil_comments_0.5']
-            struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+        else:
+            datasets = ['founta','civil_comments','civil_comments_0.5', 'civil_identities']
+            # struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
+            # print(struct)
+            # finetune_dataset = struct[0].split('_')[0]
             model = struct[-2]
             loss = struct[-1]
             if model in datasets:
                 output_name = loss + args.results_csv[:-4] + '_basic_metrics.csv' # If no custom loss function then model name is here
             else:
-                output_name = model + loss + args.results_csv[:-4] + '_basic_metrics.csv'
-
-        output_path = os.path.join(args.output_dir,output_name)
+                output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix) + '_basic_metrics.csv'
+            output_path =  os.path.join(args.output_dir,output_name)
+    
+    print(output_name)
+    print(output_path)
 
 
     # with open(os.path.join(args.data_dir, file_name), 'w') as f: 
@@ -149,8 +180,13 @@ def main():
     #         f.write('%s:%s\n' % (key, value))
     
     metrics_df = pd.DataFrame.from_dict([metrics])
+    metrics_df['model'] = model
+    metrics_df['loss'] = loss
+    metrics_df['fine_tune_data'] = finetune_dataset
+    #metrics['eval_data'] = eval_dataset
+
     print(metrics_df)
-    metrics_df.to_csv(output_path)
+    #metrics_df.to_csv(output_path)
 
 
 if __name__ == "__main__":
