@@ -100,6 +100,11 @@ def main():
                     required=False,
                     help="Metrics out put file name")
     
+    parser.add_argument("--output_suffix",
+            default="_basic_metrics.csv",
+            type=str,
+            required=False)
+
     parser.add_argument("--pAPI",
                     default=False,
                     type=str,
@@ -150,9 +155,9 @@ def main():
     #     output_path = os.path.join(args.output_dir,output_name)
 
     struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
-    print(struct)
     finetune_dataset = struct[-3].split('_')[0]
-
+    results_struct = args.results_csv.split('_')
+    eval_dataset = '_'.join(results_struct[results_struct.index('challenge')+1:-1])
     if args.output_name:
         output_path =  os.path.join(args.output_dir,args.output_name)
     else:
@@ -161,14 +166,17 @@ def main():
         else:
             datasets = ['founta','civil_comments','civil_comments_0.5', 'civil_identities']
             # struct = ' '.join(args.model_dir.split('/')).split()  # This makes sure if there is / at the end its fine
-            # print(struct)
+            #print(struct)
             # finetune_dataset = struct[0].split('_')[0]
             model = struct[-2]
             loss = struct[-1]
             if model in datasets:
-                output_name = loss + args.results_csv[:-4] + '_basic_metrics.csv' # If no custom loss function then model name is here
+                finetune_dataset = model
+                model = loss
+                loss = "plain"
+                output_name = loss + args.results_csv[:-4] + args.output_suffix  # If no custom loss function then model name is here
             else:
-                output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix) + '_basic_metrics.csv'
+                output_name = '{}_{}_{}_{}'.format(model,loss,args.results_csv[:-12],args.output_suffix)
             output_path =  os.path.join(args.output_dir,output_name)
     
     print(output_name)
@@ -183,10 +191,9 @@ def main():
     metrics_df['model'] = model
     metrics_df['loss'] = loss
     metrics_df['fine_tune_data'] = finetune_dataset
-    #metrics['eval_data'] = eval_dataset
-
+    metrics_df['eval_data'] = eval_dataset
     print(metrics_df)
-    #metrics_df.to_csv(output_path)
+    metrics_df.to_csv(output_path)
 
 
 if __name__ == "__main__":
