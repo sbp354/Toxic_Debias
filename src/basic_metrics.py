@@ -122,7 +122,11 @@ def main():
         df[pred_name] = (df[args.score_name] > .5).astype(int).values
     
     if args.results_csv == "PAPI_challenge_covert_results.csv":
+<<<<<<< HEAD
         toxic_labels = ['implicitly_offensive']
+=======
+        toxic_labels = ['implicitly_offensive']
+>>>>>>> 779915b05ab669caf0ff1359362ca2782e9ef8ea
         df['true_labels'] = df[toxic_labels].max(axis = 1)
         df['true_labels'] = np.where(df['true_labels']>.5, 1, 0)
     #     pred_name = 'predictions'
