@@ -134,7 +134,15 @@ def main():
     finetune_dataset = struct[-3].split('_')[0]
 
     if args.output_name:
+        output_name = args.output_name
         output_path =  os.path.join(args.output_dir,args.output_name)
+        model = struct[-2]
+        loss = struct[-1]
+        datasets = ['founta','civil_comments','civil_comments_0.5', 'civil_identities']
+        if model in datasets:
+            finetune_dataset = model
+            model = loss
+            loss = "plain"
     else:
         if args.results_csv == "PAPI_challenge_civil_results.csv":
             output_name = args.results_csv[:-4] + args.output_suffix
@@ -171,88 +179,83 @@ def main():
     # Civil identites requires binarization from floats and filtering
     if args.identities_csv == "civil_test.csv":
         if args.results_csv == "PAPI_challenge_civil_results.csv":
-            merged_df = pd.concat([results_df, identities_df],axis=1)
-            print(merged_df)
-            # results_df[args.pred_name] = (results_df[args.score_name] > .5).astype(int).values
-            # toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
-            # results_df['true_labels'] = results_df[toxic_labels].max(axis = 1)
-            # results_df['true_labels'] = np.where(results_df['true_labels']>.5, 1, 0)
-            # results_df = results_df[~results_df['male'].isnull()]#.reset_index()
-            # #results_df = results_df.drop(['index' , 'Unnamed: 0'],axis=1)
-            # print(results_df)
+            merged_df = results_df
+            merged_df[args.pred_name] = (merged_df[args.score_name] > .5).astype(int).values
+            toxic_labels = ['toxicity', 'severe_toxicity','obscene', 'sexual_explicit', 'identity_attack', 'insult', 'threat']
+            merged_df['true_labels'] = merged_df[toxic_labels].max(axis = 1)
+            merged_df['true_labels'] = np.where(merged_df['true_labels']>.5, 1, 0)
+            merged_df = merged_df[~merged_df['male'].isnull()].reset_index()
+            #merged_df = merged_df.drop(['index' , 'Unnamed: 0'],axis=1)
         else:
             identities_df = identities_df[~identities_df['male'].isnull()].reset_index().drop(['index'],axis=1)
             merged_df = pd.concat([results_df, identities_df],axis=1)
         #merged_df = merged_df.drop(['index', 'Unnamed: 0'],axis=1)
         df_civil_test_full = merged_df#pd.read_csv(os.path.join(args.identities_dir, args.identities_csv))
-        ## df_civil_identities = df_civil_test_full[
-        #    (df_civil_test_full.male >= .5) |
-        #    (df_civil_test_full.female >= .5) |
-        #    (df_civil_test_full.white >= .5) |
-        #   (df_civil_test_full.black >= .5)]
-        #print(len(df_civil_identities))
+        df_civil_identities = df_civil_test_full[
+            (df_civil_test_full.male >= .5) |
+            (df_civil_test_full.female >= .5) |
+            (df_civil_test_full.white >= .5) |
+           (df_civil_test_full.black >= .5)]
         # Throw away equal examples
-        #identities = df_civil_identities[
-        #    ~(df_civil_identities.male == df_civil_identities.female) | 
-        #    ~(df_civil_identities.white == df_civil_identities.black)]
-        #identities['is_female'] = np.where(identities.female > identities.male, 1.0, 0.0)
-        #identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
-        #identities_list = ['is_female', 'black']
-       # merged_df = identities
+        identities = df_civil_identities[
+            ~(df_civil_identities.male == df_civil_identities.female) | 
+            ~(df_civil_identities.white == df_civil_identities.black)]
+        identities['is_female'] = np.where(identities.female > identities.male, 1.0, 0.0)
+        identities['black'] = np.where(identities.black > identities.white, 1.0, 0.0)
+        identities_list = ['is_female', 'black']
+        merged_df = identities
 
-    #merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
-    #metrics_dict_list = []
-    #print('Calculating Aggretage Metrics...')
-    #if args.pAPI == "False":
-    #    print("hello")
-    #    merged_df['proba'] = np.where(merged_df[args.pred_name]==1, merged_df[args.score_name],1- merged_df[args.score_name])
-    #    metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name,'proba')
-    #else:
-    #    merged_df['scores'] = np.where(merged_df[args.pred_name]==1, merged_df[args.score_name], 1- merged_df[args.score_name])
-    #    metrics = get_scores(merged_df, args.label_name, args.pred_name, 'scores', args.score_name) # Because we get proba as defualt so its swapped here
-    #metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
-    #metrics['metrics_condition'] = 'none'
-    #metrics_dict_list.append(metrics)
+    merged_df = merged_df[[ args.label_name,  args.pred_name,args.score_name] + identities_list]
+    metrics_dict_list = []
+    print('Calculating Aggretage Metrics...')
+    if args.pAPI == "False":
+        merged_df['proba'] = np.where(merged_df[args.pred_name]==1, merged_df[args.score_name],1- merged_df[args.score_name])
+        metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name,'proba')
+    else:
+        merged_df['scores'] = np.where(merged_df[args.pred_name]==1, merged_df[args.score_name], 1- merged_df[args.score_name])
+        metrics = get_scores(merged_df, args.label_name, args.pred_name, 'scores', args.score_name) # Because we get proba as defualt so its swapped here
+    metrics = get_scores(merged_df, args.label_name, args.pred_name, args.score_name)
+    metrics['metrics_condition'] = 'none'
+    metrics_dict_list.append(metrics)
     
     #print(metrics)
     #print(merged_df.head(5))
 
-    #for identity in identities_list:
-    #    if args.pAPI == "False":
-    #        print('Calculating {} = 1 Metrics...'.format(identity))
-    #        metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name, args.score_name,'proba')
-    #        metrics['metrics_condition'] = '{}_1'.format(identity)
-    #        metrics_dict_list.append(metrics)
-    #        # print(metrics)
+    for identity in identities_list:
+        if args.pAPI == "False":
+            print('Calculating {} = 1 Metrics...'.format(identity))
+            metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name, args.score_name,'proba')
+            metrics['metrics_condition'] = '{}_1'.format(identity)
+            metrics_dict_list.append(metrics)
+            #print(metrics)
     #
-    #       print('Calculating {} = 0 Metrics...'.format(identity))
-    #        metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, args.score_name, 'proba')
-    # metrics['metrics_condition'] = '{}_0'.format(identity)
-    #        metrics_dict_list.append(metrics)
-            # print(metrics)
-    #    else:
-    #        print('Calculating {} = 1 Metrics...'.format(identity))
-    #        metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name,'proba', args.score_name)
-    #        metrics['metrics_condition'] = '{}_1'.format(identity)
-    #        metrics_dict_list.append(metrics)
+            print('Calculating {} = 0 Metrics...'.format(identity))
+            metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, args.score_name, 'proba')
+            metrics['metrics_condition'] = '{}_0'.format(identity)
+            metrics_dict_list.append(metrics)
+           # print(metrics)
+        else:
+            print('Calculating {} = 1 Metrics...'.format(identity))
+            metrics = get_scores(merged_df[merged_df[identity]==1], args.label_name, args.pred_name,'proba', args.score_name)
+            metrics['metrics_condition'] = '{}_1'.format(identity)
+            metrics_dict_list.append(metrics)
             # print(metrics)
     
-    #        print('Calculating {} = 0 Metrics...'.format(identity))
-    #        metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, 'proba', args.score_name)
-    #        metrics['metrics_condition'] = '{}_0'.format(identity)
-    #        metrics_dict_list.append(metrics)
+            print('Calculating {} = 0 Metrics...'.format(identity))
+            metrics = get_scores(merged_df[merged_df[identity]==0], args.label_name, args.pred_name, 'proba', args.score_name)
+            metrics['metrics_condition'] = '{}_0'.format(identity)
+            metrics_dict_list.append(metrics)
                         
-   # metrics_df = pd.DataFrame(metrics_dict_list)
-   # metrics_df['model'] = model
-   # metrics_df['loss'] = loss
-   # metrics_df['fine_tune_data'] = finetune_dataset
-   # metrics['eval_data'] = eval_dataset
+    metrics_df = pd.DataFrame(metrics_dict_list)
+    metrics_df['model'] = model
+    metrics_df['loss'] = loss
+    metrics_df['fine_tune_data'] = finetune_dataset
+    metrics['eval_data'] = eval_dataset
     
     
     #print(results_df)
-    #print(metrics_df)
     print(metrics_df)
-   # metrics_df.to_csv(output_path)
+    metrics_df.to_csv(output_path)
 
 if __name__ == "__main__":
     main()    
