@@ -1,13 +1,14 @@
 #!/bin/bash
-export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
+export TOXIC_DIR=../Final_Project/data
 export TASK_NAME=Toxic
 export TRAIN_DATASET=founta
 export DEV_DATASET=founta
-export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
 
-python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
-  --model_type xlm \
-  --model_name_or_path xlm-mlm-en-2048 \
+export MODEL_DIR=../Final_Project/models/founta
+
+python ../Toxic_Debias/run_toxic.py \
+  --model_type roberta \
+  --model_name_or_path roberta-large \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \
@@ -15,7 +16,7 @@ python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
   --save_steps 1000 \
   --logging_steps 1000 \
   --overwrite_output_dir \
-  --data_dir $TOXIC_DIR \
+  --data_dir $TOXIC_DIR/$DATA \
   --train_dataset $TRAIN_DATASET \
   --dev_dataset $DEV_DATASET \
   --max_seq_length 128 \

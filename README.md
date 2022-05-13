@@ -1,34 +1,3 @@
-# Toxic Language Debiasing
-This repo contains the code for our paper "[Challenges in Automated Debiasing
-for Toxic Language Detection](https://arxiv.org/pdf/2102.00086.pdf)". In particular, it contains the
-code to fine-tune RoBERTa and RoBERTa with the ensemble-based method in the
-task of toxic language prediction. It also contains the index of data points
-that we used in the experiments. 
-<!---
-## Citation:
-
-```bibtex
-@inproceedings{Zhou2021ToxicDebias,
-            author={Xuhui Zhou, Maarten Sap, Swabha Swayamdipta, Noah A. Smith
-            and Yejin Choi},
-            title={Challenges in Automated Debiasing for Toxic Language
-            Detection},
-            booktitle={EACL},
-            year={2021}
-        }
-```
--->
-## Overview
-### Tasks
-This repo contains code to detect toxic language with RoBERT/ ensemble-based
-ROBERTa. Our experiments mainly focus on the dataset from 
-["Large Scale Crowdsourcing and Characterization of Twitter Abusive Behavior"](https://ojs.aaai.org/index.php/ICWSM/article/view/14991).
-
-### Code
-Our implementation exists in the `.\src` folder. The `run_toxic.py` file
-organize the classifier, and the `modeling_roberta_debias.py` builds the
-ensemble-based model.
-
 ## Setup 
 
 ### Dependencies
@@ -40,16 +9,18 @@ in
 
 ### NLU Finetuning Instructions
 
-We have set up the repo to allow for finetuning on two datasets and testing/ eval on 5 datas (4 for each of the finetuning datasets). Combinations of finetune/ test datasets are in the table below:
+We have set up the repo to allow for finetuning on two datasets and testing/ eval on 6 datasets. Combinations of finetune/ test datasets are in the table below:
 
 | Finetune Dataset     | Challenge/Eval Datasets                                         |
 |----------------------|-----------------------------------------------------------------|
-| Civil comments train | Civil comments test                                           |
+| Civil identitites    | Civil identities                                                |
+|                      | Founta test                                                     |
 |                      | SBIC                                                            |
 |                      | BiBiFi                                                |
 |                      | Covert comments                                             |
 |                      | TwitterAAE                                                  |
-| Founta train         | Founta test 
+| Founta train         | Founta test  |
+|                      | Civil identities                                             |
 |                      | SBIC                                                            |
 |                      | BiBiFi                                                |
 |                      | Covert comments                                             |
@@ -60,64 +31,31 @@ We run finetuning and eval by updating different shell scripts found in the shel
 * TOXIC_DIR: Parent directory where different datasets are read in and where tokenized forms of datasets are cached (assumption is that there are dataset-specific subdirectories)
 * TRAIN_DATASET : name of the finetuning dataset to use. Options allowed in current iteration of the repository are:
   *  founta
-  *  civil_comments_0.5
+  *  civil_identities
 * DEV_DATASET : name of the challenge dataset on which the finetuned model is to be scores. Options allowed in current iteration of the repository are:
-  *  founta (only use when running founta finetuned model)
-  *  civil_comments_0.5 (only use whne running civil comments finetuned model
+  *  founta
+  *  civil_identities
   *  SBIC
   *  bibifi
   *  covert_comments 
+  *  twitter_aae
 * MODEL_DIR : directory where model checkpoints/results will get output 
 * do_train / no-do_train: when no_train finetuning will run; when no-do_train only eval will run
 
-### Data
+## Code modifications for debiasing
 
-* You can find the index of the training data with different data selection
-  methods in `data/founta/train`
-* You can find a complete list of entries of data that we need for experiments
-  in `data/demo.csv`
-* Out-of-distribution (OOD) data, the two OOD datasets we use are publicly
-  available:
-    * ONI-adv: This dataset is the test set of the work ["Build it Break it Fix
-it for Dialogue Safety: Robustness from Adversarial Human
-Attack"](https://www.aclweb.org/anthology/D19-1461/)
-    * User-reported: This dataset is from the work ['User-Level Race and Ethnicity Predictors from Twitter Text'](https://www.aclweb.org/anthology/C18-1130/)
+We have heavily modified run_toxic.py in order to allow for the new loss functions introduced in src/clf_loss_functions.py
 
-* Our word list for lexical bias is in the file: `./data/word_based_bias_list.csv`
-* Since we do not encourage building systems based on our relabeling dataset,
-  we decide not to release the relabeling dataset publicly. For research purpose, please
-  contact the first author for the access of the dataset.
+To run these debiasing methods you must first train a shallow model. Do this by calling src/shallow_subsample.py
 
-## Experiments
+Take the shallow subsamples created and finetune the model by setting the --debias argument to "shallow". Finetune with the training dataset as the 0.5% portion and evaluate on the remainder. An example for this can be found in shell_scripts/shallow_example.sh
 
-### Measure Dataset Bias
-Run 
-```python 
-python ./tools/get_stats.py /location/of/your/data_file.csv
+Examples for running debiasing can be found in the shell_scripts folder and should be fairly self-explanatory to run with your own folder structure.
 
-```
-To obtain the Peasonr correlation between toxicity and Tox-Trig words/ aav
-probabilities.
+### Original Readme
 
-### Fine-tune a Vanilla RoBERTa
-Run 
-```bash
-sh run_toxic.sh 
-```
+Please see the original readme at https://github.com/XuhuiZhou/Toxic_Debias/blob/main/README.md in order to understand the original intent of the code we've modified.
 
-### Fine-tune a Ensemble-based RoBERTa
-Run 
-```bash
-sh run_toxic_debias.sh
-```
+### Report
 
-You need to obtain the bias-only model first in order to train the ensemble
-model. Feel free to use files we provided in the folder `tools`.
-
-### Model Evaluation & Measuring Models' Bias
-
-You can use the same fine-tuning script to obtain predictions from models. 
-
-The measuring bias script takes the predictions as input and output models'
-performance and lexical/dialectal bias scores. The script is available in the
-`src` folder.
+ Our report can be found within the same github Project folder.

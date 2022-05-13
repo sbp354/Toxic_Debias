@@ -1,14 +1,14 @@
 #!/bin/bash
-export TOXIC_DIR=/scratch/sbp354/DSGA1012/Final_Project/data
+export TOXIC_DIR=../Final_Project/data
 export TASK_NAME=Shallow
-export TRAIN_DATASET=founta/founta_train_shallow_random_0.01.csv
-export DEV_DATASET=founta/founta_train_shallow_remainder_random_0.01.csv
+export TRAIN_DATASET=founta/founta_train_shallow_random_0.005.csv
+export DEV_DATASET=founta/founta_train_shallow_remainder_random_0.005.csv
 
-export MODEL_DIR=/scratch/sbp354/DSGA1012/Final_Project/models/founta
+export MODEL_DIR=../Final_Project/models/founta
 
-python /scratch/dmm9812/Toxic_Debias/run_toxic.py \
-  --model_type xlm \
-  --model_name_or_path xlm-mlm-en-2048 \
+python ../Toxic_Debias/run_toxic.py \
+  --model_type roberta \
+  --model_name_or_path roberta-large \
   --task_name $TASK_NAME \
   --do_train \
   --do_eval \

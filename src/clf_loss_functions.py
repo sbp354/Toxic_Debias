@@ -5,6 +5,7 @@ from torch.nn import CrossEntropyLoss
 import numpy as np
 import math
 
+#Code from https://github.com/UKPLab/emnlp2020-debiasing-unknown
 
 class ClfLossFunction(nn.Module):
     """Torch classification debiasing loss function"""
