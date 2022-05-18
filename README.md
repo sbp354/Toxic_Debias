@@ -58,4 +58,4 @@ Please see the original readme at https://github.com/XuhuiZhou/Toxic_Debias/blob
 
 ### Report
 
- Our report can be found within the same github Project folder.
+ Our report can be found within the same github Project folder titled NLU_final_paper.pdf
